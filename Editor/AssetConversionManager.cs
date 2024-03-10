@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -28,16 +29,20 @@ namespace WowUnity
 
             foreach (string path in importedModelPathQueue)
             {
-                var dirName = Path.GetDirectoryName(path);
-                string pathToMetadata = dirName + "/" + Path.GetFileNameWithoutExtension(path) + ".json";
-                string mainDataPath = Application.dataPath.Replace("Assets", "");
+                if (Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+.obj$")) {
+                    ADTUtility.PostProcessImport(path);
+                } else {
+                    var dirName = Path.GetDirectoryName(path);
+                    string pathToMetadata = dirName + "/" + Path.GetFileNameWithoutExtension(path) + ".json";
+                    string mainDataPath = Application.dataPath.Replace("Assets", "");
 
-                var sr = new StreamReader(mainDataPath + pathToMetadata);
-                var jsonData = sr.ReadToEnd();
-                sr.Close();
+                    var sr = new StreamReader(mainDataPath + pathToMetadata);
+                    var jsonData = sr.ReadToEnd();
+                    sr.Close();
 
-                M2Utility.PostProcessImport(path, jsonData);
-                WMOUtility.PostProcessImport(path, jsonData);
+                    M2Utility.PostProcessImport(path, jsonData);
+                    WMOUtility.PostProcessImport(path, jsonData);
+                }
             }
 
             //Processing done: remove all paths from the queue

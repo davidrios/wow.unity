@@ -21,12 +21,7 @@ namespace WowUnity
         private static List<string> queuedPlacementInformationPaths = new List<string>();
         private static List<string> missingFilesInQueue = new List<string>();
 
-        public static bool isADT(TextAsset modelPlacementInformation)
-        {
-            return Regex.IsMatch(modelPlacementInformation.name, @"adt_\d{2}_\d{2}");
-        }
-
-        public static void GenerateADT(GameObject prefab, TextAsset modelPlacementInformation)
+        public static void PlaceModels(GameObject prefab, TextAsset modelPlacementInformation)
         {
             GameObject instantiatedGameObject = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             instantiatedGameObject.isStatic = true;
@@ -56,7 +51,14 @@ namespace WowUnity
 
         private static void ParseFileAndSpawnDoodads(GameObject instantiatedPrefabGObj, TextAsset modelPlacementInformation)
         {
-            var doodadSetRoot = instantiatedPrefabGObj.transform.Find("DoodadSets");
+            var isAdt = Regex.IsMatch(modelPlacementInformation.name, @"adt_\d+_\d+");
+
+            Transform doodadSetRoot;
+            if (isAdt) {
+                doodadSetRoot = instantiatedPrefabGObj.transform.Find("EnvironmentSet");
+            } else {
+                doodadSetRoot = instantiatedPrefabGObj.transform.Find("DoodadSets");
+            }
 
             string[] records = modelPlacementInformation.text.Split(CSV_LINE_SEPERATOR);
             foreach (string record in records.Skip(1))
@@ -69,11 +71,9 @@ namespace WowUnity
                 Vector3 doodadPosition = Vector3.zero;
                 Quaternion doodadRotation = Quaternion.identity;
                 float doodadScale = float.Parse(fields[8], CultureInfo.InvariantCulture);
-                var doodadSetObj = doodadSetRoot.transform.Find(fields[9]);
 
-                if (isADT(modelPlacementInformation))
+                if (isAdt)
                 {
-
                     doodadPosition.x = MAXIMUM_DISTANCE_FROM_ORIGIN - float.Parse(fields[1], CultureInfo.InvariantCulture);
                     doodadPosition.z = (MAXIMUM_DISTANCE_FROM_ORIGIN - float.Parse(fields[3], CultureInfo.InvariantCulture)) * -1f;
                     doodadPosition.y = float.Parse(fields[2], CultureInfo.InvariantCulture);
@@ -84,6 +84,15 @@ namespace WowUnity
                     eulerRotation.z = float.Parse(fields[4], CultureInfo.InvariantCulture) * -1;
 
                     doodadRotation.eulerAngles = eulerRotation;
+
+                    var spawned = SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, doodadSetRoot);
+                    var doodadSets = fields[13].Split(",");
+                    foreach (var setName in doodadSets) {
+                        var childObj = spawned.transform.Find($"DoodadSets/{setName}");
+                        if (childObj != null) {
+                            childObj.gameObject.SetActive(true);
+                        }
+                    }
                 }
                 else
                 {
@@ -98,20 +107,20 @@ namespace WowUnity
                         float.Parse(fields[6], CultureInfo.InvariantCulture) * -1, 
                         float.Parse(fields[4], CultureInfo.InvariantCulture) * -1
                     );
-                }
 
-                SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, doodadSetObj.transform);
+                    SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, doodadSetRoot.transform.Find(fields[9]));
+                }
             }
         }
 
-        private static void SpawnDoodad(string path, Vector3 position, Quaternion rotation, float scaleFactor, Transform parent)
+        private static GameObject SpawnDoodad(string path, Vector3 position, Quaternion rotation, float scaleFactor, Transform parent)
         {
             GameObject exisitingPrefab = M2Utility.FindOrCreatePrefab(path);
 
             if (exisitingPrefab == null)
             {
                 Debug.LogWarning("Object was not spawned because it could not be found: " + path);
-                return;
+                return null;
             }
 
             GameObject newDoodadInstance = PrefabUtility.InstantiatePrefab(exisitingPrefab, parent) as GameObject;
@@ -119,6 +128,8 @@ namespace WowUnity
             newDoodadInstance.transform.localPosition = position;
             newDoodadInstance.transform.localRotation = rotation;
             newDoodadInstance.transform.localScale = new Vector3(scaleFactor, scaleFactor, scaleFactor);
+
+            return newDoodadInstance;
         }
 
         public static void QueuePlacementData(string filePath)
@@ -140,7 +151,7 @@ namespace WowUnity
                 TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
                 string prefabPath = Path.GetDirectoryName(path) + Path.DirectorySeparatorChar + Path.GetFileName(path).Replace("_ModelPlacementInformation.csv", ".prefab");
                 GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-                GenerateADT(prefab, placementData);
+                PlaceModels(prefab, placementData);
 
                 queuedPlacementInformationPaths.Remove(path);
             }
