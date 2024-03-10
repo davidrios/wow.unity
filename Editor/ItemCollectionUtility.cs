@@ -56,6 +56,8 @@ namespace WowUnity
 
         private static void ParseFileAndSpawnDoodads(GameObject instantiatedPrefabGObj, TextAsset modelPlacementInformation)
         {
+            var doodadSetRoot = instantiatedPrefabGObj.transform.Find("DoodadSets");
+
             string[] records = modelPlacementInformation.text.Split(CSV_LINE_SEPERATOR);
             foreach (string record in records.Skip(1))
             {
@@ -67,6 +69,7 @@ namespace WowUnity
                 Vector3 doodadPosition = Vector3.zero;
                 Quaternion doodadRotation = Quaternion.identity;
                 float doodadScale = float.Parse(fields[8], CultureInfo.InvariantCulture);
+                var doodadSetObj = doodadSetRoot.transform.Find(fields[9]);
 
                 if (isADT(modelPlacementInformation))
                 {
@@ -97,7 +100,7 @@ namespace WowUnity
                     );
                 }
 
-                SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, instantiatedPrefabGObj.transform);
+                SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, doodadSetObj.transform);
             }
         }
 
@@ -135,7 +138,7 @@ namespace WowUnity
             foreach (string path in iteratingList)
             {
                 TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
-                string prefabPath = Path.GetDirectoryName(path) + Path.DirectorySeparatorChar + Path.GetFileName(path).Replace("_ModelPlacementInformation.csv", ".obj");
+                string prefabPath = Path.GetDirectoryName(path) + Path.DirectorySeparatorChar + Path.GetFileName(path).Replace("_ModelPlacementInformation.csv", ".prefab");
                 GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
                 GenerateADT(prefab, placementData);
 

@@ -34,6 +34,23 @@ namespace WowUnity
             AssetDatabase.Refresh();
 
             GameObject prefab = M2Utility.FindOrCreatePrefab(path);
+
+            if (metadata.doodadSets.Count > 0) {
+                var rootDoodadSetsObj = new GameObject("DoodadSets") { isStatic = true };
+                foreach (var doodadSet in metadata.doodadSets) {
+                    var setObj = new GameObject(doodadSet.name) { isStatic = true };
+                    setObj.transform.parent = rootDoodadSetsObj.transform;
+                    setObj.SetActive(false);
+                }
+
+                GameObject prefabInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                rootDoodadSetsObj.transform.parent = prefabInst.transform;
+                PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
+                PrefabUtility.SavePrefabAsset(prefab);
+                Object.DestroyImmediate(rootDoodadSetsObj);
+                Object.DestroyImmediate(prefabInst);
+                AssetDatabase.Refresh();
+            }
         }
 
         public static bool AssignVertexColors(Group group, List<GameObject> gameObjects)
@@ -94,6 +111,7 @@ namespace WowUnity
             public List<string> groupNames;
             public List<M2Utility.Texture> textures;
             public List<Material> materials;
+            public List<DoodadSet> doodadSets;
         }
 
         public class Group
@@ -127,6 +145,12 @@ namespace WowUnity
 			public uint texture3;
 			public uint color3;
 			public uint flags3;
+        }
+
+        public class DoodadSet {
+            public string name;
+			public uint firstInstanceIndex;
+			public uint doodadCount;
         }
     }
 }

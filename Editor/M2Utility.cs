@@ -24,7 +24,7 @@ namespace WowUnity
             ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
             var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            
+
             Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
 
             var skinMaterials = MaterialUtility.GetSkinMaterials(metadata);
@@ -72,7 +72,8 @@ namespace WowUnity
                 return null;
             }
 
-            GameObject rootModelInstance = PrefabUtility.InstantiatePrefab(importedModelObject) as GameObject;
+            var rootObj = new GameObject() { isStatic = true };
+            GameObject rootModelInstance = PrefabUtility.InstantiatePrefab(importedModelObject, rootObj.transform) as GameObject;
 
             //Set the object as static, and all it's child objects
             rootModelInstance.isStatic = true;
@@ -81,9 +82,9 @@ namespace WowUnity
                 childTransform.gameObject.isStatic = true;
             }
 
-            GameObject newPrefab = PrefabUtility.SaveAsPrefabAssetAndConnect(rootModelInstance, prefabPath, InteractionMode.AutomatedAction);
+            GameObject newPrefab = PrefabUtility.SaveAsPrefabAssetAndConnect(rootObj, prefabPath, InteractionMode.AutomatedAction);
             AssetDatabase.Refresh();
-            UnityEngine.Object.DestroyImmediate(rootModelInstance);
+            UnityEngine.Object.DestroyImmediate(rootObj);
 
             return newPrefab;
         }
