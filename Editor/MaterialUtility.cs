@@ -34,8 +34,8 @@ namespace WowUnity
         }
 
         public static Material GetMaterial(M2Utility.Texture texture, short flags, uint blendingMode, int shader) {
-            var matName = $"{texture.uniqMtlName}_TF{texture.flag}_F{flags}_B{blendingMode}_S{shader}";
-            var assetMatPath = $"Assets/Materials/wow/{matName}.mat";
+            var matName = $"{Path.GetFileNameWithoutExtension(texture.fileNameExternal)}_TF{texture.flag}_F{flags}_B{blendingMode}_S{shader}";
+            var assetMatPath = Path.Join(Path.GetDirectoryName(texture.assetPath), $"{matName}.mat");
 
             var assetMat = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
             if (assetMat == null) {

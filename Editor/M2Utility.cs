@@ -2,9 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using UnityEditor;
 using UnityEngine;
 
@@ -95,11 +92,6 @@ namespace WowUnity
             for (var idx = 0; idx < textures.Count; idx++) {
                 var texture = textures[idx];
                 texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.fileNameExternal)));
-
-                var sha1 = SHA1.Create();
-                var hash = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(texture.fileNameInternal));
-                texture.uniqMtlName = texture.mtlName + "_" + string.Concat(hash.Select(b => b.ToString("x2")))[..8];
-
                 textures[idx] = texture;
             }
         }

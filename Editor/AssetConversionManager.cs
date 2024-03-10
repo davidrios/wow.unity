@@ -22,11 +22,6 @@ namespace WowUnity
                 return;
             }
 
-            if (!Directory.Exists("Assets/Materials/wow"))
-            {
-                Directory.CreateDirectory("Assets/Materials/wow").Create();
-            }
-
             foreach (string path in importedModelPathQueue)
             {
                 if (Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+.obj$")) {
