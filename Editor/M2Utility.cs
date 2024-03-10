@@ -3,8 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,43 +12,40 @@ namespace WowUnity
 {
     class M2Utility
     {
-        private static List<string> importedModelPathQueue = new List<string>();
-
-        public static void QueueMetadata(string filePath)
+        public static void PostProcessImport(string path, string jsonData)
         {
-            importedModelPathQueue.Add(filePath);
-        }
-
-        public static void PostProcessImports()
-        {
-            if (importedModelPathQueue.Count == 0)
-            {
+            var metadata = JsonConvert.DeserializeObject<M2>(jsonData);
+            if (metadata.fileType != "m2") {
                 return;
             }
 
-            List<string> iteratingList = new List<string>(importedModelPathQueue);
+            Debug.Log($"{path}: processing m2");
 
-            foreach (string path in iteratingList)
+            ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
+
+            var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            
+            Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
+
+            var skinMaterials = MaterialUtility.GetSkinMaterials(metadata);
+
+            for (uint rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
             {
-                M2 metadata = ReadMetadataFor(path);
+                var renderer = renderers[rendererIndex];
+                renderer.material = skinMaterials[rendererIndex];
+            }
+            AssetDatabase.Refresh();
 
-                if (metadata == null)
-                    continue;
+            GameObject prefab = FindOrCreatePrefab(path);
 
-                GameObject prefab = FindOrCreatePrefab(path);
-
-                if (metadata.textureTransforms.Count > 0 && metadata.textureTransforms[0].translation.timestamps.Count > 0)
+            if (metadata.textureTransforms.Count > 0 && metadata.textureTransforms[0].translation.timestamps.Count > 0)
+            {
+                for (int i = 0; i < metadata.textureTransforms.Count; i++)
                 {
-                    for (int i = 0; i < metadata.textureTransforms.Count; i++)
-                    {
-                        AnimationClip newClip = AnimationUtility.CreateAnimationClip(metadata.textureTransforms[i]);
-                        AssetDatabase.CreateAsset(newClip, Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + "[" + i +  "]" + ".anim");
-                    }
+                    AnimationClip newClip = AnimationUtility.CreateAnimationClip(metadata.textureTransforms[i]);
+                    AssetDatabase.CreateAsset(newClip, Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + "[" + i +  "]" + ".anim");
                 }
             }
-
-            //Processing done: remove all paths from the queue
-            importedModelPathQueue.Clear();
         }
 
         public static GameObject FindOrCreatePrefab(string path)
@@ -75,11 +72,6 @@ namespace WowUnity
                 return null;
             }
 
-            ConfigureRendererMaterials(importedModelObject);
-
-            ModelImporter modelImporter = ModelImporter.GetAtPath(path) as ModelImporter;
-            modelImporter.SearchAndRemapMaterials(ModelImporterMaterialName.BasedOnMaterialName, ModelImporterMaterialSearch.RecursiveUp);
-
             GameObject rootModelInstance = PrefabUtility.InstantiatePrefab(importedModelObject) as GameObject;
 
             //Set the object as static, and all it's child objects
@@ -96,70 +88,25 @@ namespace WowUnity
             return newPrefab;
         }
 
-        private static void ConfigureRendererMaterials(GameObject importedModelObject)
-        {
-            //Manage materials for imported models.
+        public static void ProcessTextures(List<Texture> textures, string dirName) {
+            string mainDataPath = Application.dataPath.Replace("Assets", "");
 
-            //First, we need to sample all renderers that belong to the specified game object.
-            Renderer[] renderers = importedModelObject.GetComponentsInChildren<Renderer>();
+            for (var idx = 0; idx < textures.Count; idx++) {
+                var texture = textures[idx];
+                texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.fileNameExternal)));
 
-            //Now we will loop through all renderers present in the game object
-            //and call the MaterialUtility to create the asset.
-            for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
-            {
-                for (int materialIndex = 0; materialIndex < renderers[rendererIndex].sharedMaterials.Length; materialIndex++)
-                {
-                    //We don't need to worry about repeat materials here,
-                    //because the CreateMaterialAsset already handles this case for us.
-                    MaterialUtility.ExtractMaterialFromAsset(renderers[rendererIndex].sharedMaterials[materialIndex]);
-                }
+                var sha1 = SHA1.Create();
+                var hash = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(texture.fileNameInternal));
+                texture.uniqMtlName = texture.mtlName + "_" + string.Concat(hash.Select(b => b.ToString("x2")))[..8];
+
+                textures[idx] = texture;
             }
-            AssetDatabase.Refresh();
-        }
-
-        public static M2 ReadMetadataFor(string path)
-        {
-            string pathToMetadata = Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + ".json";
-
-            if (!File.Exists(pathToMetadata))
-            {
-                return null;
-            }
-
-            var sr = new StreamReader(Application.dataPath.Replace("Assets", "") + pathToMetadata);
-            var fileContents = sr.ReadToEnd();
-            sr.Close();
-
-            return JsonConvert.DeserializeObject<M2>(fileContents);
-        }
-
-        public static Material GetMaterialData(string materialName, M2 metadata)
-        {
-            Material data = new Material();
-            data.flags = 0;
-            data.blendingMode = 0;
-
-            //I have no idea why they sometimes don't match sizes.
-            // I'm guessing if there's no material entry, default is intended.
-            for(int i = 0; i < metadata.textures.Count; i++)
-            {
-                Texture texture = metadata.textures[i];
-                if (texture.mtlName != materialName)
-                    continue;
-
-                if (metadata.materials.Count <= i)
-                    i = metadata.materials.Count - 1;
-                
-                data = metadata.materials[i];
-                break;
-            }
-
-            return data;
         }
 
         [Serializable]
         public class M2
         {
+            public string fileType;
             public uint fileDataID;
             public string fileName;
             public string internalName;
@@ -189,9 +136,11 @@ namespace WowUnity
         [Serializable]
         public struct TextureUnit
         {
-            public uint skinSelectionIndex;
+            public uint skinSectionIndex;
             public uint geosetIndex;
+            public uint materialIndex;
             public uint colorIndex;
+            public uint textureComboIndex;
         }
 
         [Serializable]
@@ -199,7 +148,9 @@ namespace WowUnity
         {
             public string fileNameInternal;
             public string fileNameExternal;
+            public string assetPath;
             public string mtlName;
+            public string uniqMtlName;
             public short flag;
             public uint fileDataID;
         }

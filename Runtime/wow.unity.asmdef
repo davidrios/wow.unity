@@ -10,11 +10,6 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [
-        {
-            "name": "com.unity.render-pipelines.universal",
-            "expression": "12",
-            "define": "UNITY_UNIVERSAL_RP_12_0_0_OR_GREATER"
-        }
     ],
     "noEngineReferences": false
 }

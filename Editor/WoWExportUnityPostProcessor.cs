@@ -1,11 +1,7 @@
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using UnityEditor.AssetImporters;
 using System.IO;
 using System.Text.RegularExpressions;
-using System.Linq;
-using System;
 using WowUnity;
 
 public class WoWExportUnityPostprocessor : AssetPostprocessor
@@ -26,6 +22,10 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
             return false;
         if (path.Contains(".phys.obj"))
             return false;
+
+        if (!File.Exists(Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + ".json")) {
+            return false;
+        }
 
         return true;
     }
@@ -55,27 +55,17 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
             return;
         }
 
+        Debug.Log($"{assetPath}: processing wow model");
+
         ModelImporter modelImporter = assetImporter as ModelImporter;
+
         modelImporter.bakeAxisConversion = true;
         modelImporter.generateSecondaryUV = true;
         modelImporter.secondaryUVMarginMethod = ModelImporterSecondaryUVMarginMethod.Calculate;
         modelImporter.secondaryUVMinLightmapResolution = 16;
         modelImporter.secondaryUVMinObjectScale = 1;
 
-        modelImporter.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
-        modelImporter.materialName = ModelImporterMaterialName.BasedOnMaterialName;
-        modelImporter.materialSearch = ModelImporterMaterialSearch.RecursiveUp;
-    }
-
-    public void OnPreprocessMaterialDescription(MaterialDescription description, Material material, AnimationClip[] materialAnimation)
-    {
-        if (!ValidAsset(assetPath))
-        {
-            return;
-        }
-
-        M2Utility.M2 metadata = M2Utility.ReadMetadataFor(assetPath);
-        material = MaterialUtility.ConfigureMaterial(description, material, assetPath, metadata);
+        modelImporter.materialImportMode = ModelImporterMaterialImportMode.None;
     }
 
     public void OnPostprocessModel(GameObject gameObject)
@@ -108,16 +98,13 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
     static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
     {
-        string path;
+        Debug.Log(string.Format("postproc all: imported {0} assets", importedAssets.Length));
 
-        for(int i = 0; i < importedAssets.Length; i++)
+        foreach (string path in importedAssets)
         {
-            path = importedAssets[i];
-
-            //M2 Utility Queue
             if (ValidAsset(path))
             {
-                M2Utility.QueueMetadata(path);
+                AssetConversionManager.QueueMetadata(path);
             }
 
             //ADT/WMO Item Collection Queue

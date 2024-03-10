@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.AssetImporters;
 using UnityEngine;
@@ -13,8 +9,8 @@ namespace WowUnity
 {
     class MaterialUtility
     {
-        public const string LIT_SHADER = "Universal Render Pipeline/Simple Lit";
-        public const string UNLIT_SHADER = "Universal Render Pipeline/Unlit";
+        public const string LIT_SHADER = "Standard";
+        public const string UNLIT_SHADER = "Unlit/Texture";
         public const string EFFECT_SHADER = "Universal Render Pipeline/Particles/Unlit";
         public const string ADT_CHUNK_SHADER = "wow.unity/TerrainChunk";
 
@@ -38,70 +34,99 @@ namespace WowUnity
             BlendAdd = 7
         }
 
-        public static Material ConfigureMaterial(MaterialDescription description, Material material, string modelImportPath, M2Utility.M2 metadata)
-        {
-            if (Regex.IsMatch(Path.GetFileNameWithoutExtension(modelImportPath), @"adt_\d{2}_\d{2}"))
-                return ProcessADTMaterial(description, material, modelImportPath);
+        public static Material GetMaterial(M2Utility.Texture texture, short flags, uint blendingMode) {
+            var matName = $"{texture.uniqMtlName}_TF{texture.flag}_F{flags}_B{blendingMode}";
+            var assetMatPath = $"Assets/Materials/wow/{matName}.mat";
 
-            M2Utility.Material materialData = M2Utility.GetMaterialData(material.name, metadata);
-            Color materialColor = Color.white;
-            if (metadata != null && metadata.colors.Count > 0)
-            {
-                materialColor = ProcessMaterialColors(material, metadata);
-            }
-            
-            material.shader = Shader.Find(LIT_SHADER);
-            material.SetColor("_BaseColor", materialColor);
+            var assetMat = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
+            if (assetMat == null) {
+                Debug.Log($"{matName}: material does not exist, creating.");
 
-            // Read a texture property from the material description.
-            TexturePropertyDescription textureProperty;
-            if (description.TryGetProperty("DiffuseColor", out textureProperty) && textureProperty.texture != null)
-            {
-                // Assign the texture to the material.
-                material.SetTexture("_MainTex", textureProperty.texture);
+                assetMat = new Material(Shader.Find(LIT_SHADER));
+                assetMat.SetFloat("_Glossiness", 0);
+                assetMat.SetTexture("_MainTex", AssetDatabase.LoadAssetAtPath<Texture>(texture.assetPath));
+                    
+                ProcessFlagsForMaterial(assetMat, flags, blendingMode);
+
+                AssetDatabase.CreateAsset(assetMat, assetMatPath);
+                AssetDatabase.SaveAssets();
             }
-                
-            ProcessFlagsForMaterial(material, materialData);
-            return material;
+
+            return assetMat;
         }
 
-        public static void ProcessFlagsForMaterial(Material material, M2Utility.Material data)
+        public static Dictionary<uint, Material> GetSkinMaterials(M2Utility.M2 metadata)
+        {
+            Dictionary<uint, Material> mats = new();
+
+            foreach (var textureUnit in metadata.skin.textureUnits) {
+                var texture = metadata.textures[metadata.textureCombos[checked((int)textureUnit.textureComboIndex)]];
+                var unitMat = metadata.materials[checked((int)textureUnit.materialIndex)];
+                mats[textureUnit.skinSectionIndex] = GetMaterial(texture, unitMat.flags, unitMat.blendingMode);
+            }
+
+            return mats;
+        }
+
+        public static Dictionary<string, Material> GetWMOMaterials(WMOUtility.WMO metadata)
+        {
+            Dictionary<string, Material> mats = new();
+
+            var texturesById = metadata.textures.ToDictionary((item) => item.fileDataID, (item) => item);
+
+            foreach (var group in metadata.groups) {
+                for (var batchIdx = 0; batchIdx < group.renderBatches.Count; batchIdx++) {
+                    var batch = group.renderBatches[batchIdx];
+                    var batchMat = metadata.materials[checked((int)batch.materialID)];
+                    var texture = texturesById[batchMat.texture1];
+
+                    var material = GetMaterial(texture, batchMat.flags, batchMat.blendMode);
+                    mats[$"{group.groupName}{batchIdx}"] = material;
+                }
+            }
+
+            return mats;
+        }
+
+        public static void ProcessFlagsForMaterial(Material material, short flags, uint blendingMode)
         {
             //Flags first
-            if ((data.flags & (short)MaterialFlags.Unlit) != (short)MaterialFlags.None)
+            if ((flags & (short)MaterialFlags.Unlit) != (short)MaterialFlags.None)
             {
                 material.shader = Shader.Find(UNLIT_SHADER);
             }
 
-            if ((data.flags & (short)MaterialFlags.TwoSided) != (short)MaterialFlags.None)
+            if ((flags & (short)MaterialFlags.TwoSided) != (short)MaterialFlags.None)
             {
                 material.doubleSidedGI = true;
                 material.SetFloat("_Cull", 0);
             }
 
             //Now blend modes
-            if (data.blendingMode == (short)BlendModes.AlphaKey)
+            if (blendingMode == (short)BlendModes.AlphaKey)
             {
-                material.EnableKeyword("_ALPHATEST_ON");
-                material.SetFloat("_AlphaClip", 1);
+                // material.SetFloat("_AlphaClip", 1);
+                material.SetFloat("_Mode", 1);
             }
 
-            if (data.blendingMode == (short)BlendModes.Alpha)
+            if (blendingMode == (short)BlendModes.Alpha)
             {
-                material.SetOverrideTag("RenderType", "Transparent");
-                material.SetFloat("_Blend", 0);
-                material.SetFloat("_Surface", 1);
+                material.SetFloat("_Mode", 3);
+                // material.SetOverrideTag("RenderType", "Transparent");
+                // material.SetFloat("_Blend", 0);
+                // material.SetFloat("_Surface", 1);
                 material.SetFloat("_ZWrite", 0);
             }
 
-            if (data.blendingMode == (short)BlendModes.Add)
+            if (blendingMode == (short)BlendModes.Add)
             {
-                material.SetOverrideTag("RenderType", "Transparent");
+                material.SetFloat("_Mode", 3);
+                // material.SetOverrideTag("RenderType", "Transparent");
                 material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                // material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
                 material.SetFloat("_Cutoff", 0);
-                material.SetFloat("_Blend", 1);
-                material.SetFloat("_Surface", 1);
+                // material.SetFloat("_Blend", 1);
+                // material.SetFloat("_Surface", 1);
                 material.SetFloat("_SrcBlend", 1);
                 material.SetFloat("_DstBlend", 1);
                 material.SetFloat("_ZWrite", 0);
@@ -185,34 +210,6 @@ namespace WowUnity
             }
 
             mat.SetVector("Scale", scaleVector);
-        }
-
-        public static void ExtractMaterialFromAsset(Material material)
-        {
-            string assetPath = AssetDatabase.GetAssetPath(material);
-            string newMaterialPath = "Assets/Materials/" + material.name + ".mat";
-            Material newMaterialAsset;
-
-            if (!Directory.Exists("Assets/Materials"))
-            {
-                Directory.CreateDirectory("Assets/Materials");
-            }
-            
-            if (!File.Exists(newMaterialPath))
-            {
-                newMaterialAsset = new Material(material);
-                AssetDatabase.CreateAsset(newMaterialAsset, newMaterialPath);
-            }
-            else
-            {
-                newMaterialAsset = AssetDatabase.LoadAssetAtPath<Material>(newMaterialPath);
-            }
-
-            AssetImporter importer = AssetImporter.GetAtPath(assetPath);
-            importer.AddRemap(new AssetImporter.SourceAssetIdentifier(material), newMaterialAsset);
-
-            AssetDatabase.WriteImportSettingsIfDirty(assetPath);
-            AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
         }
     }
 }
