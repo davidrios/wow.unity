@@ -2,7 +2,6 @@
 using System.IO;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.AssetImporters;
 using UnityEngine;
 
 namespace WowUnity
@@ -183,45 +182,44 @@ namespace WowUnity
             return newColor;
         }
 
-        public static Material ProcessADTMaterial(MaterialDescription description, Material material, string modelImportPath)
+        public static Material GetTerrainMaterial(string dirName, string sectionName, ADTUtility.Tex metadata)
         {
-            material.shader = Shader.Find(ADT_CHUNK_SHADER);
+            var assetMatPath = Path.Join(dirName, $"tex_{sectionName}.mat");
 
-            TexturePropertyDescription textureProperty;
-            if (description.TryGetProperty("DiffuseColor", out textureProperty) && textureProperty.texture != null)
+            var assetMat = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
+            if (assetMat == null)
             {
-                material.SetTexture("_BaseMap", textureProperty.texture);
+                Debug.Log($"{assetMatPath}: material does not exist, creating.");
+
+                var textures = metadata.layers.Select((item) => AssetDatabase.LoadAssetAtPath<Texture>(item.assetPath)).ToList();
+                var mask = AssetDatabase.LoadAssetAtPath<Texture>(Path.Join(dirName, $"tex_{sectionName}.png"));
+
+                assetMat = new Material(Shader.Find("Custom/wow.unity/TerrainShader"));
+
+                assetMat.SetTexture("_MaskTex", mask);
+                assetMat.SetTexture("_Layer0Tex", textures[0]);
+                if (textures.Count >= 2)
+                {
+                       assetMat.SetTexture("_Layer1Tex", textures[1]);
+                }
+                if (textures.Count >= 3)
+                {
+                       assetMat.SetTexture("_Layer2Tex", textures[2]);
+                }
+                if (textures.Count >= 4)
+                {
+                       assetMat.SetTexture("_Layer3Tex", textures[3]);
+                }
+                if (textures.Count >= 5)
+                {
+                       assetMat.SetTexture("_Layer4Tex", textures[4]);
+                }
+
+                AssetDatabase.CreateAsset(assetMat, assetMatPath);
+                AssetDatabase.SaveAssets();
             }
 
-            LoadMetadataAndConfigureADT(material, modelImportPath);
-
-            return material;
-        }
-
-        public static void LoadMetadataAndConfigureADT(Material mat, string assetPath)
-        {
-            string jsonFilePath = Path.GetDirectoryName(assetPath) + Path.DirectorySeparatorChar + mat.name + ".json";
-            var sr = new StreamReader(Application.dataPath.Replace("Assets", "") + jsonFilePath);
-            var fileContents = sr.ReadToEnd();
-            sr.Close();
-
-            TerrainMaterialGenerator.Chunk newChunk = JsonUtility.FromJson<TerrainMaterialGenerator.Chunk>(fileContents);
-
-            Vector4 scaleVector = new Vector4();
-            TerrainMaterialGenerator.Layer currentLayer;
-            for (int i = 0; i < newChunk.layers.Count; i++)
-            {
-                currentLayer = newChunk.layers[i];
-                string texturePath = Path.Combine(Path.GetDirectoryName(@assetPath), @currentLayer.file);
-                texturePath = Path.GetFullPath(texturePath);
-                texturePath = texturePath.Substring(texturePath.IndexOf($"Assets{Path.DirectorySeparatorChar}"));
-
-                Texture2D layerTexture = (Texture2D)AssetDatabase.LoadAssetAtPath(texturePath, typeof(Texture2D));
-                mat.SetTexture("Layer_" + i, layerTexture);
-                scaleVector[i] = currentLayer.scale;
-            }
-
-            mat.SetVector("Scale", scaleVector);
+            return assetMat;
         }
     }
 }
