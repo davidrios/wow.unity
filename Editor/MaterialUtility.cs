@@ -34,19 +34,31 @@ namespace WowUnity
             BlendAdd = 7
         }
 
-        public static Material GetMaterial(M2Utility.Texture texture, short flags, uint blendingMode) {
-            var matName = $"{texture.uniqMtlName}_TF{texture.flag}_F{flags}_B{blendingMode}";
+        public static Material GetMaterial(M2Utility.Texture texture, short flags, uint blendingMode, int shader) {
+            var matName = $"{texture.uniqMtlName}_TF{texture.flag}_F{flags}_B{blendingMode}_S{shader}";
             var assetMatPath = $"Assets/Materials/wow/{matName}.mat";
 
             var assetMat = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
             if (assetMat == null) {
                 Debug.Log($"{matName}: material does not exist, creating.");
 
+                Texture assetTexture = AssetDatabase.LoadAssetAtPath<Texture>(texture.assetPath);
+
                 assetMat = new Material(Shader.Find(LIT_SHADER));
                 assetMat.SetFloat("_Glossiness", 0);
-                assetMat.SetTexture("_MainTex", AssetDatabase.LoadAssetAtPath<Texture>(texture.assetPath));
+                assetMat.SetTexture("_MainTex", assetTexture);
                     
                 ProcessFlagsForMaterial(assetMat, flags, blendingMode);
+
+                if (shader == 1) {
+                    assetMat.SetFloat("_SmoothnessTextureChannel", 1);
+                }
+
+                if ((flags & 16) == 16) {
+                    assetMat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+                    assetMat.SetColor("_EmissionColor", Color.white);
+                    assetMat.SetTexture("_EmissionMap", assetTexture);
+                }
 
                 AssetDatabase.CreateAsset(assetMat, assetMatPath);
                 AssetDatabase.SaveAssets();
@@ -62,7 +74,7 @@ namespace WowUnity
             foreach (var textureUnit in metadata.skin.textureUnits) {
                 var texture = metadata.textures[metadata.textureCombos[checked((int)textureUnit.textureComboIndex)]];
                 var unitMat = metadata.materials[checked((int)textureUnit.materialIndex)];
-                mats[textureUnit.skinSectionIndex] = GetMaterial(texture, unitMat.flags, unitMat.blendingMode);
+                mats[textureUnit.skinSectionIndex] = GetMaterial(texture, unitMat.flags, unitMat.blendingMode, 0);
             }
 
             return mats;
@@ -80,7 +92,7 @@ namespace WowUnity
                     var batchMat = metadata.materials[checked((int)batch.materialID)];
                     var texture = texturesById[batchMat.texture1];
 
-                    var material = GetMaterial(texture, batchMat.flags, batchMat.blendMode);
+                    var material = GetMaterial(texture, batchMat.flags, batchMat.blendMode, batchMat.shader);
                     mats[$"{group.groupName}{batchIdx}"] = material;
                 }
             }
