@@ -23,7 +23,11 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
         if (path.Contains(".phys.obj"))
             return false;
 
-        return File.Exists(Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + ".json") || Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+.obj$");
+        return (
+            File.Exists(Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + ".json") ||
+            Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+.obj$") ||
+            path.EndsWith("_invn.obj")
+        );
     }
 
     public void OnPreprocessTexture()

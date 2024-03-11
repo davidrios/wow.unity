@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -8,24 +9,21 @@ namespace WowUnity
 {
     class AssetConversionManager
     {
-        private static List<string> importedModelPathQueue = new();
+        private static ConcurrentQueue<string> importedModelPathQueue = new();
 
         public static void QueueMetadata(string filePath)
         {
-            importedModelPathQueue.Add(filePath);
+            importedModelPathQueue.Enqueue(filePath);
         }
 
         public static void PostProcessImports()
         {
-            if (importedModelPathQueue.Count == 0)
-            {
-                return;
-            }
-
-            foreach (string path in importedModelPathQueue)
+            while (importedModelPathQueue.TryDequeue(out string path))
             {
                 if (Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+.obj$")) {
                     ADTUtility.PostProcessImport(path);
+                } else if (path.EndsWith("_invn.obj")) {
+                    M2Utility.PostProcessDoubleSidedImport(path);
                 } else {
                     var dirName = Path.GetDirectoryName(path);
                     string pathToMetadata = dirName + "/" + Path.GetFileNameWithoutExtension(path) + ".json";
@@ -39,9 +37,6 @@ namespace WowUnity
                     WMOUtility.PostProcessImport(path, jsonData);
                 }
             }
-
-            //Processing done: remove all paths from the queue
-            importedModelPathQueue.Clear();
         }
 
         public static void ProcessAssets()

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -26,14 +27,50 @@ namespace WowUnity
 
             var skinMaterials = MaterialUtility.GetSkinMaterials(metadata);
 
+            var isDoubleSided = false;
+            List<string> doubleSidedRemove = new();
+
             for (uint rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
             {
                 var renderer = renderers[rendererIndex];
-                renderer.material = skinMaterials[rendererIndex];
+                var (material, isMatDoubleSided) = skinMaterials[rendererIndex];
+                renderer.material = material;
+
+                isDoubleSided = isDoubleSided || isMatDoubleSided;
+                if (!isMatDoubleSided)
+                {
+                    doubleSidedRemove.Add(renderer.name);
+                }
             }
             AssetDatabase.Refresh();
 
             GameObject prefab = FindOrCreatePrefab(path);
+
+            if (isDoubleSided)
+            {
+                GameObject dinst = PrefabUtility.InstantiatePrefab(imported) as GameObject;
+                foreach (var name in doubleSidedRemove)
+                {
+                    var nonDouble = dinst.transform.Find(name);
+                    if (nonDouble != null)
+                    {
+                        Debug.Log($"remove non inv {name}");
+                        UnityEngine.Object.DestroyImmediate(nonDouble.gameObject);
+                    }
+                }
+
+                foreach (var meshFilter in dinst.GetComponentsInChildren<MeshFilter>())
+                {
+                    meshFilter.mesh = DuplicateAndReverseMesh(meshFilter.mesh);
+                }
+
+                // need to rotate to be correct, don't ask why, I don't know what I'm doing
+                dinst.transform.RotateAround(dinst.transform.position, Vector3.up, 180);
+
+                string invPath = path.Replace(".obj", "_invn.obj");
+                ObjExporter.ExportObj(dinst, invPath);
+                UnityEngine.Object.DestroyImmediate(dinst);
+            }
 
             if (metadata.textureTransforms.Count > 0 && metadata.textureTransforms[0].translation.timestamps.Count > 0)
             {
@@ -43,6 +80,37 @@ namespace WowUnity
                     AssetDatabase.CreateAsset(newClip, Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + "[" + i +  "]" + ".anim");
                 }
             }
+        }
+
+        public static void PostProcessDoubleSidedImport(string path)
+        {
+            Debug.Log($"{path}: processing double sided");
+
+            var origPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(path.Replace("_invn.obj", ".prefab"));
+            if (origPrefab == null)
+            {
+                Debug.Log($"{path}: could not find original prefab");
+                return;
+            }
+
+            GameObject origPrefabInst = PrefabUtility.InstantiatePrefab(origPrefab) as GameObject;
+
+            var texturesByRenderer = origPrefabInst.GetComponentsInChildren<Renderer>()
+                .Select((item) => (item.name, item.sharedMaterial))
+                .ToDictionary((item) => item.Item1, (item) => item.Item2);
+
+            var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var renderers = imported.GetComponentsInChildren<Renderer>();
+            for (var idx = 0; idx < renderers.Length; idx++)
+            {
+                renderers[idx].sharedMaterial = texturesByRenderer[renderers[idx].name];
+            }
+            var importedInst = PrefabUtility.InstantiatePrefab(imported, origPrefabInst.transform) as GameObject;
+
+            PrefabUtility.ApplyPrefabInstance(origPrefabInst, InteractionMode.AutomatedAction);
+            PrefabUtility.SavePrefabAsset(origPrefab);
+
+            UnityEngine.Object.DestroyImmediate(origPrefabInst);
         }
 
         public static GameObject FindOrCreatePrefab(string path)
@@ -94,6 +162,39 @@ namespace WowUnity
                 texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.fileNameExternal)));
                 textures[idx] = texture;
             }
+        }
+
+        public static Mesh DuplicateAndReverseMesh(Mesh mesh)
+        {
+            Mesh invertedMesh = new()
+            {
+                vertices = mesh.vertices,
+                triangles = mesh.triangles,
+                uv = mesh.uv, // Copy UVs if necessary
+                uv2 = mesh.uv2 // Copy UVs if necessary
+            };
+
+            // Invert the normals
+            Vector3[] normals = mesh.normals;
+            for (int i = 0; i < normals.Length; i++)
+            {
+                normals[i] = -normals[i];
+            }
+            invertedMesh.normals = normals;
+
+            // Invert the triangle order to keep the mesh visible from the other side
+            for (int i = 0; i < invertedMesh.subMeshCount; i++)
+            {
+                int[] triangles = invertedMesh.GetTriangles(i);
+                for (int j = 0; j < triangles.Length; j += 3)
+                {
+                    // Swap order of triangles
+                    (triangles[j + 1], triangles[j]) = (triangles[j], triangles[j + 1]);
+                }
+                invertedMesh.SetTriangles(triangles, i);
+            }
+
+            return invertedMesh;
         }
 
         [Serializable]
