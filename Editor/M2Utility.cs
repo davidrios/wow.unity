@@ -64,9 +64,6 @@ namespace WowUnity
                     meshFilter.sharedMesh = DuplicateAndReverseMesh(meshFilter.sharedMesh);
                 }
 
-                // need to rotate to be correct, don't ask why, I don't know what I'm doing
-                dinst.transform.RotateAround(dinst.transform.position, Vector3.up, 180);
-
                 string invPath = path.Replace(".obj", "_invn.obj");
                 ObjExporter.ExportObj(dinst, invPath);
                 UnityEngine.Object.DestroyImmediate(dinst);

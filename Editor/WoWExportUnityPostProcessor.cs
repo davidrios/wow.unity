@@ -18,9 +18,9 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
     static private bool ValidAsset(string path)
     {
-        if (!path.Contains(".obj"))
+        if (!path.EndsWith(".obj"))
             return false;
-        if (path.Contains(".phys.obj"))
+        if (path.EndsWith(".phys.obj"))
             return false;
 
         return (
@@ -50,16 +50,23 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
     public void OnPreprocessModel()
     {
+        ModelImporter modelImporter = assetImporter as ModelImporter;
+
         if (!ValidAsset(assetPath))
         {
+            if (assetPath.EndsWith(".phys.obj"))
+            {
+                modelImporter.bakeAxisConversion = true;
+            }
             return;
         }
 
         Debug.Log($"{assetPath}: processing wow model");
 
-        ModelImporter modelImporter = assetImporter as ModelImporter;
-
-        modelImporter.bakeAxisConversion = true;
+        if (!assetPath.EndsWith("_invn.obj"))
+        {
+            modelImporter.bakeAxisConversion = true;
+        }
         modelImporter.generateSecondaryUV = true;
         modelImporter.secondaryUVMarginMethod = ModelImporterSecondaryUVMarginMethod.Calculate;
         modelImporter.secondaryUVMinLightmapResolution = 16;
@@ -90,8 +97,6 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
             GameObject collider = new GameObject();
             collider.transform.SetParent(gameObject.transform);
             collider.name = "Collision";
-            // for some reason the collision mesh is rotated 180 degrees when imported
-            collider.transform.RotateAround(collider.transform.position, Vector3.up, 180);
             MeshFilter collisionMesh = physicsPrefab.GetComponentInChildren<MeshFilter>();
             MeshCollider parentCollider = collider.AddComponent<MeshCollider>();
             parentCollider.sharedMesh = collisionMesh.sharedMesh;
