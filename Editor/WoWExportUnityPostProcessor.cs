@@ -90,6 +90,8 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
             GameObject collider = new GameObject();
             collider.transform.SetParent(gameObject.transform);
             collider.name = "Collision";
+            // for some reason the collision mesh is rotated 180 degrees when imported
+            collider.transform.RotateAround(collider.transform.position, Vector3.up, 180);
             MeshFilter collisionMesh = physicsPrefab.GetComponentInChildren<MeshFilter>();
             MeshCollider parentCollider = collider.AddComponent<MeshCollider>();
             parentCollider.sharedMesh = collisionMesh.sharedMesh;
