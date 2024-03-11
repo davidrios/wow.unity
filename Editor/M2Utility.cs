@@ -54,7 +54,6 @@ namespace WowUnity
                     var nonDouble = dinst.transform.Find(name);
                     if (nonDouble != null)
                     {
-                        Debug.Log($"remove non inv {name}");
                         UnityEngine.Object.DestroyImmediate(nonDouble.gameObject);
                     }
                 }
