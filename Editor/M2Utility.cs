@@ -61,7 +61,7 @@ namespace WowUnity
 
                 foreach (var meshFilter in dinst.GetComponentsInChildren<MeshFilter>())
                 {
-                    meshFilter.mesh = DuplicateAndReverseMesh(meshFilter.mesh);
+                    meshFilter.sharedMesh = DuplicateAndReverseMesh(meshFilter.sharedMesh);
                 }
 
                 // need to rotate to be correct, don't ask why, I don't know what I'm doing
