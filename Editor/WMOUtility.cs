@@ -18,6 +18,11 @@ namespace WowUnity
 
             Debug.Log($"{path}: processing wmo");
 
+            if (M2Utility.FindPrefab(path) != null)
+            {
+                return;
+            }
+
             M2Utility.ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
             var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);

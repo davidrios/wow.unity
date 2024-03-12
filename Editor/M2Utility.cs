@@ -19,6 +19,11 @@ namespace WowUnity
 
             Debug.Log($"{path}: processing m2");
 
+            if (FindPrefab(path) != null)
+            {
+                return;
+            }
+
             ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
             var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -85,11 +90,17 @@ namespace WowUnity
             var origPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(path.Replace("_invn.obj", ".prefab"));
             if (origPrefab == null)
             {
-                Debug.Log($"{path}: could not find original prefab");
+                Debug.LogWarning($"{path}: could not find original prefab");
                 return;
             }
 
             GameObject origPrefabInst = PrefabUtility.InstantiatePrefab(origPrefab) as GameObject;
+
+            if (origPrefabInst.transform.Find(Path.GetFileNameWithoutExtension(path)) != null)
+            {
+                UnityEngine.Object.DestroyImmediate(origPrefabInst);
+                return;
+            }
 
             var texturesByRenderer = origPrefabInst.GetComponentsInChildren<Renderer>()
                 .Select((item) => (item.name, item.sharedMaterial))
@@ -111,8 +122,7 @@ namespace WowUnity
 
         public static GameObject FindOrCreatePrefab(string path)
         {
-            string prefabPath = Path.ChangeExtension(path, "prefab");
-            GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            GameObject existingPrefab = FindPrefab(path);
 
             if (existingPrefab == null)
             {
@@ -120,6 +130,12 @@ namespace WowUnity
             }
 
             return existingPrefab;
+        }
+
+        public static GameObject FindPrefab(string path)
+        {
+            string prefabPath = Path.ChangeExtension(path, "prefab");
+            return AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         }
 
         public static GameObject GeneratePrefab(string path)

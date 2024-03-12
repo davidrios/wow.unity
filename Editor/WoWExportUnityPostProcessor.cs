@@ -16,7 +16,7 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
         return 1;
     }
 
-    static private bool ValidAsset(string path)
+    static public bool ValidAsset(string path)
     {
         if (!path.EndsWith(".obj"))
             return false;
@@ -77,56 +77,36 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
     public void OnPostprocessModel(GameObject gameObject)
     {
-        if (!ValidAsset(assetPath))
+        if (!ValidAsset(assetPath) || assetPath.EndsWith("_invn.obj"))
         {
             return;
         }
 
-        GameObject physicsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath.Replace(".obj", ".phys.obj"));
-        MeshRenderer[] childRenderers = gameObject.GetComponentsInChildren<MeshRenderer>();
-
-        if (physicsPrefab == null || physicsPrefab.GetComponentInChildren<MeshFilter>() == null)
+        if (!File.Exists(assetPath.Replace(".obj", ".phys.obj")))
         {
+            MeshRenderer[] childRenderers = gameObject.GetComponentsInChildren<MeshRenderer>();
             foreach (MeshRenderer child in childRenderers)
             {
                 child.gameObject.AddComponent<MeshCollider>();
             }
         }
-        else
-        {
-            GameObject collider = new GameObject();
-            collider.transform.SetParent(gameObject.transform);
-            collider.name = "Collision";
-            MeshFilter collisionMesh = physicsPrefab.GetComponentInChildren<MeshFilter>();
-            MeshCollider parentCollider = collider.AddComponent<MeshCollider>();
-            parentCollider.sharedMesh = collisionMesh.sharedMesh;
-        }
     }
 
     static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
     {
-        Debug.Log(string.Format("postproc all: imported {0} assets", importedAssets.Length));
-
+        var hasWow = false;
         foreach (string path in importedAssets)
         {
             if (ValidAsset(path))
             {
-                AssetConversionManager.QueueMetadata(path);
-            }
-
-            //ADT/WMO Item Collection Queue
-            if (Path.GetFileName(path).Contains("_ModelPlacementInformation.csv"))
-            {
-                ItemCollectionUtility.QueuePlacementData(path);
-            }
-
-            //ADT Liquid Volume Queue
-            if (Regex.IsMatch(path, @"liquid_\d{2}_\d{2}(?=\.json)"))
-            {
-                LiquidUtility.QueueLiquidData(path);
+                AssetConversionManager.QueuePostprocess(path);
+                hasWow = true;
             }
         }
 
-        EditorApplication.update += AssetConversionManager.ProcessAssets;
+        if (hasWow && !AssetConversionManager.IsBusy())
+        {
+            EditorUtility.DisplayDialog("WoW assets imported", "There were WoW assets imported, they need to be postprocessed to work properly. After the import is finished, click on the menu bar Jobs > WoWUnity > Postprocess last imported WoW assets.", "Ok");
+        }
     }
 }

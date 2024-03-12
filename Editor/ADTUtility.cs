@@ -12,6 +12,11 @@ namespace WowUnity
         {
             Debug.Log($"{path}: processing adt");
 
+            if (M2Utility.FindPrefab(path) != null)
+            {
+                return;
+            }
+
             var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
             var dirName = Path.GetDirectoryName(path);

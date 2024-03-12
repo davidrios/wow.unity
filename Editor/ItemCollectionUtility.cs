@@ -1,11 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
 
 namespace WowUnity
 {
@@ -18,9 +17,6 @@ namespace WowUnity
         public static readonly float MAP_SIZE = MAXIMUM_DISTANCE_FROM_ORIGIN * 2f;
         public static readonly float ADT_SIZE = MAP_SIZE / 64f;
 
-        private static List<string> queuedPlacementInformationPaths = new List<string>();
-        private static List<string> missingFilesInQueue = new List<string>();
-
         public static void PlaceModels(GameObject prefab, TextAsset modelPlacementInformation)
         {
             GameObject instantiatedGameObject = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
@@ -30,21 +26,10 @@ namespace WowUnity
                 childTransform.gameObject.isStatic = true;
             }
 
-            string path = AssetDatabase.GetAssetPath(prefab);
-
             ParseFileAndSpawnDoodads(instantiatedGameObject, modelPlacementInformation);
 
-            string parentPath = AssetDatabase.GetAssetPath(prefab);
-
-            if (Path.GetExtension(parentPath) == ".prefab")
-            {
-                PrefabUtility.ApplyPrefabInstance(instantiatedGameObject, InteractionMode.AutomatedAction);
-                PrefabUtility.SavePrefabAsset(prefab);
-            }
-            else
-            {
-                PrefabUtility.SaveAsPrefabAsset(instantiatedGameObject, parentPath.Replace(Path.GetExtension(parentPath), ".prefab"));
-            }
+            PrefabUtility.ApplyPrefabInstance(instantiatedGameObject, InteractionMode.AutomatedAction);
+            PrefabUtility.SavePrefabAsset(prefab);
 
             Object.DestroyImmediate(instantiatedGameObject);
         }
@@ -58,6 +43,11 @@ namespace WowUnity
                 doodadSetRoot = instantiatedPrefabGObj.transform.Find("EnvironmentSet");
             } else {
                 doodadSetRoot = instantiatedPrefabGObj.transform.Find("DoodadSets");
+            }
+
+            if (doodadSetRoot.Find("doodadsplaced") != null)
+            {
+                return;
             }
 
             string[] records = modelPlacementInformation.text.Split(CSV_LINE_SEPERATOR);
@@ -108,9 +98,13 @@ namespace WowUnity
                         float.Parse(fields[4], CultureInfo.InvariantCulture) * -1
                     );
 
-                    SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, doodadSetRoot.transform.Find(fields[9]));
+                    var doodadSubsetRoot = doodadSetRoot.transform.Find(fields[9]);
+                    SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, doodadSubsetRoot);
                 }
             }
+
+            var placed = new GameObject("doodadsplaced");
+            placed.transform.parent = doodadSetRoot.transform;
         }
 
         private static GameObject SpawnDoodad(string path, Vector3 position, Quaternion rotation, float scaleFactor, Transform parent)
@@ -130,36 +124,6 @@ namespace WowUnity
             newDoodadInstance.transform.localScale = new Vector3(scaleFactor, scaleFactor, scaleFactor);
 
             return newDoodadInstance;
-        }
-
-        public static void QueuePlacementData(string filePath)
-        {
-            queuedPlacementInformationPaths.Add(filePath);
-        }
-
-        public static void BeginQueue()
-        {
-            if (queuedPlacementInformationPaths.Count == 0)
-            {
-                return;
-            }
-
-            List<string> iteratingList = new List<string>(queuedPlacementInformationPaths);
-
-            foreach (string path in iteratingList)
-            {
-                TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
-                string prefabPath = Path.GetDirectoryName(path) + Path.DirectorySeparatorChar + Path.GetFileName(path).Replace("_ModelPlacementInformation.csv", ".prefab");
-                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-                PlaceModels(prefab, placementData);
-
-                queuedPlacementInformationPaths.Remove(path);
-            }
-
-            foreach (string missingFilePath in missingFilesInQueue)
-            {
-                Debug.Log("Warning, import could not be found: " + missingFilePath);
-            }
         }
     }
 }
