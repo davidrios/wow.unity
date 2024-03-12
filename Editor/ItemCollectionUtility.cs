@@ -45,6 +45,12 @@ namespace WowUnity
                 doodadSetRoot = instantiatedPrefabGObj.transform.Find("DoodadSets");
             }
 
+            if (doodadSetRoot == null)
+            {
+                Debug.LogWarning("No doodad set root found in " + instantiatedPrefabGObj.name);
+                return;
+            }
+
             if (doodadSetRoot.Find("doodadsplaced") != null)
             {
                 return;

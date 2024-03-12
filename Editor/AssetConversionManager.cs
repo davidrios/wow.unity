@@ -28,6 +28,8 @@ namespace WowUnity
             var itemsToProcess = importedModelPathQueue.Count;
             var itemsProcessed = 0;
 
+            List<(string, TextAsset)> hasPlacement = new();
+
             while (importedModelPathQueue.TryDequeue(out string path))
             {
                 Debug.Log("Postprocessing " + path);
@@ -65,10 +67,15 @@ namespace WowUnity
                 TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(path.Replace(".obj", "_ModelPlacementInformation.csv"));
                 if (placementData != null)
                 {
-                    ItemCollectionUtility.PlaceModels(M2Utility.FindPrefab(path), placementData);
+                    hasPlacement.Add((path, placementData));
                 }
 
                 itemsProcessed++;
+            }
+
+            foreach (var (path, placementData) in hasPlacement)
+            {
+                ItemCollectionUtility.PlaceModels(M2Utility.FindPrefab(path), placementData);
             }
         }
 
