@@ -36,7 +36,6 @@ namespace WowUnity
 
                 if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW assets", path, itemsProcessed / itemsToProcess))
                 {
-                    EditorUtility.DisplayDialog("Postprocessing WoW assets", "You can resume from where you left off or process everything from the menu Jobs > WoWUnity.", "Ok");
                     break;
                 }
 
@@ -135,13 +134,7 @@ namespace WowUnity
             isBusy = false;
         }
 
-        [MenuItem("Jobs/WoWUnity/Postprocess last imported assets")]
-        private static void JobPostprocessLastAssets()
-        {
-            PostProcessImports();
-        }
-
-        [MenuItem("Jobs/WoWUnity/Repostprocess all assets")]
+        [MenuItem("Jobs/WoWUnity/Postprocess all assets")]
         private static void JobPostprocessAllAssets()
         {
             importedModelPathQueue.Clear();
