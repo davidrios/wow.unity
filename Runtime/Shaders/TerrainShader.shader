@@ -1,4 +1,4 @@
-Shader "Custom/wow.unity/TerrainShader"
+Shader "wow.unity/TerrainShader"
 {
     Properties
     {

@@ -51,27 +51,27 @@ namespace WowUnity
 
             GameObject prefab = FindOrCreatePrefab(path);
 
-            if (isDoubleSided)
-            {
-                GameObject dinst = PrefabUtility.InstantiatePrefab(imported) as GameObject;
-                foreach (var name in doubleSidedRemove)
-                {
-                    var nonDouble = dinst.transform.Find(name);
-                    if (nonDouble != null)
-                    {
-                        UnityEngine.Object.DestroyImmediate(nonDouble.gameObject);
-                    }
-                }
+            //if (isDoubleSided)
+            //{
+            //    GameObject dinst = PrefabUtility.InstantiatePrefab(imported) as GameObject;
+            //    foreach (var name in doubleSidedRemove)
+            //    {
+            //        var nonDouble = dinst.transform.Find(name);
+            //        if (nonDouble != null)
+            //        {
+            //            UnityEngine.Object.DestroyImmediate(nonDouble.gameObject);
+            //        }
+            //    }
 
-                foreach (var meshFilter in dinst.GetComponentsInChildren<MeshFilter>())
-                {
-                    meshFilter.sharedMesh = DuplicateAndReverseMesh(meshFilter.sharedMesh);
-                }
+            //    foreach (var meshFilter in dinst.GetComponentsInChildren<MeshFilter>())
+            //    {
+            //        meshFilter.sharedMesh = DuplicateAndReverseMesh(meshFilter.sharedMesh);
+            //    }
 
-                string invPath = path.Replace(".obj", "_invn.obj");
-                ObjExporter.ExportObj(dinst, invPath);
-                UnityEngine.Object.DestroyImmediate(dinst);
-            }
+            //    string invPath = path.Replace(".obj", "_invn.obj");
+            //    ObjExporter.ExportObj(dinst, invPath);
+            //    UnityEngine.Object.DestroyImmediate(dinst);
+            //}
 
             if (metadata.textureTransforms.Count > 0 && metadata.textureTransforms[0].translation.timestamps.Count > 0)
             {

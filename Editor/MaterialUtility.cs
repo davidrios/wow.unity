@@ -9,6 +9,7 @@ namespace WowUnity
     class MaterialUtility
     {
         public const string LIT_SHADER = "Standard";
+        public const string LIT_SHADER_NOCULL = "wow.unity/StandardNoCull";
         public const string UNLIT_SHADER = "Unlit/Texture";
         public const string EFFECT_SHADER = "Universal Render Pipeline/Particles/Unlit";
         public const string ADT_CHUNK_SHADER = "wow.unity/TerrainChunk";
@@ -65,7 +66,7 @@ namespace WowUnity
             if ((flags & (short)MaterialFlags.TwoSided) != (short)MaterialFlags.None)
             {
                 assetMat.doubleSidedGI = true;
-                assetMat.SetFloat("_Cull", 0);
+                assetMat.shader = Shader.Find(LIT_SHADER_NOCULL);
             }
 
             //Now blend modes
@@ -206,7 +207,7 @@ namespace WowUnity
                 var textures = metadata.layers.Select((item) => AssetDatabase.LoadAssetAtPath<Texture>(item.assetPath)).ToList();
                 var mask = AssetDatabase.LoadAssetAtPath<Texture>(Path.Join(dirName, $"tex_{sectionName}.png"));
 
-                assetMat = new Material(Shader.Find("Custom/wow.unity/TerrainShader"));
+                assetMat = new Material(Shader.Find("wow.unity/TerrainShader"));
 
                 assetMat.SetTexture("_MaskTex", mask);
                 assetMat.SetTexture("_Layer0Tex", textures[0]);
