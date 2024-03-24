@@ -33,7 +33,7 @@ namespace WowUnity
             var skinMaterials = MaterialUtility.GetSkinMaterials(metadata);
 
             var isDoubleSided = false;
-            List<string> doubleSidedRemove = new();
+            List<string> nonDoubleSided = new();
 
             for (uint rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
             {
@@ -44,7 +44,7 @@ namespace WowUnity
                 isDoubleSided = isDoubleSided || isMatDoubleSided;
                 if (!isMatDoubleSided)
                 {
-                    doubleSidedRemove.Add(renderer.name);
+                    nonDoubleSided.Add(renderer.name);
                 }
             }
             AssetDatabase.Refresh();
@@ -53,24 +53,7 @@ namespace WowUnity
 
             if (isDoubleSided)
             {
-                GameObject dinst = PrefabUtility.InstantiatePrefab(imported) as GameObject;
-                foreach (var name in doubleSidedRemove)
-                {
-                    var nonDouble = dinst.transform.Find(name);
-                    if (nonDouble != null)
-                    {
-                        UnityEngine.Object.DestroyImmediate(nonDouble.gameObject);
-                    }
-                }
-
-                foreach (var meshFilter in dinst.GetComponentsInChildren<MeshFilter>())
-                {
-                    meshFilter.sharedMesh = DuplicateAndReverseMesh(meshFilter.sharedMesh);
-                }
-
-                string invPath = path.Replace(".obj", "_invn.obj");
-                ObjExporter.ExportObj(dinst, invPath);
-                UnityEngine.Object.DestroyImmediate(dinst);
+                ExportDoubleSided(path, imported, nonDoubleSided);
             }
 
             if (metadata.textureTransforms.Count > 0 && metadata.textureTransforms[0].translation.timestamps.Count > 0)
@@ -81,6 +64,28 @@ namespace WowUnity
                     AssetDatabase.CreateAsset(newClip, Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + "[" + i +  "]" + ".anim");
                 }
             }
+        }
+
+        public static void ExportDoubleSided(string origPath, GameObject asset, List<string> nonDoubleSided)
+        {
+            GameObject dinst = PrefabUtility.InstantiatePrefab(asset) as GameObject;
+            foreach (var name in nonDoubleSided)
+            {
+                var nonDouble = dinst.transform.Find(name);
+                if (nonDouble != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(nonDouble.gameObject);
+                }
+            }
+
+            foreach (var meshFilter in dinst.GetComponentsInChildren<MeshFilter>())
+            {
+                meshFilter.sharedMesh = DuplicateAndReverseMesh(meshFilter.sharedMesh);
+            }
+
+            string invPath = origPath.Replace(".obj", "_invn.obj");
+            ObjExporter.ExportObj(dinst, invPath);
+            UnityEngine.Object.DestroyImmediate(dinst);
         }
 
         public static void PostProcessDoubleSidedImport(string path)

@@ -106,7 +106,11 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
         if (hasWow && !AssetConversionManager.IsBusy())
         {
-            EditorUtility.DisplayDialog("WoW assets imported", "There were WoW assets imported, they need to be processed to work properly. After the import is finished, click on the menu bar Window > wow.unity and click Process under Process Assets.", "Ok");
+            var processNow = EditorUtility.DisplayDialog("WoW assets imported", "There were WoW assets imported, they need to be processed to work properly. Do you want to process them now? They can also be processed later by opening menu bar Window > wow.unity and clicking Process under All Assets.", "Process now", "Do it later");
+            if (processNow)
+            {
+                AssetConversionManager.JobPostprocessAllAssets();
+            }
         }
     }
 }

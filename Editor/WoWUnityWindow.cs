@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using WowUnity;
@@ -17,15 +16,15 @@ public class WoWUnityWindow : EditorWindow
 
     private void OnEnable()
     {
-        Selection.selectionChanged += OnSelectionChange;
+        Selection.selectionChanged += OnSelectionChangeForMap;
     }
 
     private void OnDisable()
     {
-        Selection.selectionChanged -= OnSelectionChange;
+        Selection.selectionChanged -= OnSelectionChangeForMap;
     }
 
-    void OnSelectionChange()
+    void OnSelectionChangeForMap()
     {
         selectedAssets = new();
         foreach (var obj in Selection.objects)
@@ -84,6 +83,14 @@ public class WoWUnityWindow : EditorWindow
 
             GUILayout.EndHorizontal();
         }
+
+        GUILayout.Space(10);
+
+        GUILayout.Label("Double-sided util", EditorStyles.boldLabel);
+        if (GUILayout.Button("Create for selected objects"))
+        {
+            CreateDoubleSided();
+        }
     }
 
     void ProcessAssets()
@@ -124,5 +131,66 @@ public class WoWUnityWindow : EditorWindow
         }
 
         Debug.Log("Done placing doodads.");
+    }
+
+    void CreateDoubleSided()
+    {
+        GameObject parent = null;
+        HashSet<string> doubleSidedList = new();
+        foreach (var selected in Selection.gameObjects)
+        {
+            if (!selected.GetComponent<MeshFilter>())
+            {
+                Debug.LogWarning("Invalid object selected.");
+                return;
+            }
+
+            if (parent == null)
+            {
+                parent = selected.transform.parent.gameObject;
+            } else
+            {
+                if (parent != selected.transform.parent.gameObject)
+                {
+                    Debug.LogWarning("Selected objects must be children of the same parent.");
+                    return;
+                }
+            }
+
+            doubleSidedList.Add(selected.name);
+        }
+
+        List<string> nonDoubleSided = new();
+        for (var i = 0; i < parent.transform.childCount; i++)
+        {
+            var child = parent.transform.GetChild(i);
+            if (!doubleSidedList.Contains(child.name))
+            {
+                nonDoubleSided.Add(child.name);
+            }
+        }
+
+        var path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(parent);
+        if (path == null || !path.EndsWith(".obj"))
+        {
+            Debug.LogWarning("Invalid object selected.");
+            return;
+        }
+
+        var asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+        M2Utility.ExportDoubleSided(path, asset, nonDoubleSided);
+
+        Debug.Log($"{path}: exported double sided.");
+
+        var invPath = path.Replace(".obj", "_invn.obj");
+        var newAsset = AssetImporter.GetAtPath(invPath);
+        if (newAsset == null)
+        {
+            AssetDatabase.ImportAsset(invPath);
+        }
+        else {
+            newAsset.SaveAndReimport();
+        }
     }
 }
