@@ -66,7 +66,6 @@ namespace WowUnity
             if ((flags & (short)MaterialFlags.TwoSided) != (short)MaterialFlags.None)
             {
                 assetMat.doubleSidedGI = true;
-                assetMat.shader = Shader.Find(LIT_SHADER_NOCULL);
             }
 
             //Now blend modes
