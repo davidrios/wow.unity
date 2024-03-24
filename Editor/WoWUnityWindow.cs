@@ -1,16 +1,49 @@
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using WowUnity;
 
 public class WoWUnityWindow : EditorWindow
 {
-    private GameObject selectedAsset;
+    private Dictionary<string, GameObject> selectedAssets;
 
     [MenuItem("Window/wow.unity")]
     public static void ShowWindow()
     {
         GetWindow<WoWUnityWindow>("wow.unity");
+    }
+
+    private void OnEnable()
+    {
+        Selection.selectionChanged += OnSelectionChange;
+    }
+
+    private void OnDisable()
+    {
+        Selection.selectionChanged -= OnSelectionChange;
+    }
+
+    void OnSelectionChange()
+    {
+        selectedAssets = new();
+        foreach (var obj in Selection.objects)
+        {
+            if (obj.GetType() != typeof(GameObject))
+            {
+                continue;
+            }
+
+            string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(obj);
+            if (!ADTUtility.IsAdtAny(path))
+            {
+                continue;
+            }
+
+            selectedAssets[obj.name] = obj as GameObject;
+        }
+        Repaint();
     }
 
     private void OnGUI()
@@ -25,21 +58,32 @@ public class WoWUnityWindow : EditorWindow
 
         GUILayout.Label("Map", EditorStyles.boldLabel);
 
-        selectedAsset = EditorGUILayout.ObjectField("Select map tile:", selectedAsset, typeof(GameObject), false) as GameObject;
-
-        GUILayout.BeginHorizontal();
-
-        if (GUILayout.Button("Setup Terrain"))
+        if (selectedAssets == null || selectedAssets.Count == 0)
         {
-            SetupTerrain();
-        }
-
-        if (GUILayout.Button("Place Doodads"))
+            GUILayout.Label("No tiles selected. Select some in the project window.");
+        } else
         {
-            PlaceDoodads();
-        }
+            GUILayout.Label("Selected tiles:");
 
-        GUILayout.EndHorizontal();
+            foreach (var asset in selectedAssets.Values)
+            {
+                EditorGUILayout.ObjectField(asset, typeof(GameObject), false);
+            }
+
+            GUILayout.BeginHorizontal();
+
+            if (GUILayout.Button("Setup Terrain"))
+            {
+                SetupTerrain();
+            }
+
+            if (GUILayout.Button("Place Doodads"))
+            {
+                PlaceDoodads();
+            }
+
+            GUILayout.EndHorizontal();
+        }
     }
 
     void ProcessAssets()
@@ -49,35 +93,36 @@ public class WoWUnityWindow : EditorWindow
 
     void SetupTerrain()
     {
-        string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selectedAsset);
-        if (!ADTUtility.IsAdtObj(path))
+        foreach (var selectedAsset in selectedAssets.Values)
         {
-            EditorUtility.DisplayDialog("Error", "Please select a valid map tile.", "Ok");
-            return;
+            string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selectedAsset);
+            ADTUtility.PostProcessImport(path);
         }
-        ADTUtility.PostProcessImport(path);
+
+        Debug.Log("Done setting up terrain.");
     }
 
     void PlaceDoodads()
     {
-        string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selectedAsset);
-        if (!ADTUtility.IsAdtAny(path))
-        {
-            EditorUtility.DisplayDialog("Error", "Please select a valid map tile.", "Ok");
-            return;
-        }
-
         SetupTerrain();
-        GameObject prefab = M2Utility.FindPrefab(Path.ChangeExtension(path, "prefab"));
 
-        TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(Path.ChangeExtension(path, "obj").Replace(".obj", "_ModelPlacementInformation.csv"));
-        if (placementData == null)
+        foreach (var selectedAsset in selectedAssets.Values)
         {
-            EditorUtility.DisplayDialog("Error", "ModelPlacementInformation.csv not found.", "Ok");
-            return;
+            string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selectedAsset);
+
+            GameObject prefab = M2Utility.FindPrefab(Path.ChangeExtension(path, "prefab"));
+
+            TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(Path.ChangeExtension(path, "obj").Replace(".obj", "_ModelPlacementInformation.csv"));
+            if (placementData == null)
+            {
+                EditorUtility.DisplayDialog("Error", "ModelPlacementInformation.csv not found.", "Ok");
+                return;
+            }
+
+            Debug.Log("Placing Doodads...");
+            ItemCollectionUtility.PlaceModels(prefab, placementData);
         }
 
-        Debug.Log("Placing Doodads...");
-        ItemCollectionUtility.PlaceModels(prefab, placementData);
+        Debug.Log("Done placing doodads.");
     }
 }

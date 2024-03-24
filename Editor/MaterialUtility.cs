@@ -196,7 +196,12 @@ namespace WowUnity
 
         public static Material GetTerrainMaterial(string dirName, string sectionName, ADTUtility.Tex metadata)
         {
-            var assetMatPath = Path.Join(dirName, $"tex_{sectionName}.mat");
+            var matDir = Path.Join(dirName, "terrain_materials");
+            if (!Directory.Exists(matDir))
+            {
+                Directory.CreateDirectory(matDir);
+            }
+            var assetMatPath = Path.Join(matDir, $"tex_{sectionName}.mat");
 
             var assetMat = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
             if (assetMat == null)
@@ -212,23 +217,22 @@ namespace WowUnity
                 assetMat.SetTexture("_Layer0Tex", textures[0]);
                 if (textures.Count >= 2)
                 {
-                       assetMat.SetTexture("_Layer1Tex", textures[1]);
+                    assetMat.SetTexture("_Layer1Tex", textures[1]);
                 }
                 if (textures.Count >= 3)
                 {
-                       assetMat.SetTexture("_Layer2Tex", textures[2]);
+                    assetMat.SetTexture("_Layer2Tex", textures[2]);
                 }
                 if (textures.Count >= 4)
                 {
-                       assetMat.SetTexture("_Layer3Tex", textures[3]);
+                    assetMat.SetTexture("_Layer3Tex", textures[3]);
                 }
                 if (textures.Count >= 5)
                 {
-                       assetMat.SetTexture("_Layer4Tex", textures[4]);
+                    assetMat.SetTexture("_Layer4Tex", textures[4]);
                 }
 
                 AssetDatabase.CreateAsset(assetMat, assetMatPath);
-                AssetDatabase.SaveAssets();
             }
 
             return assetMat;

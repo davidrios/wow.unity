@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
@@ -34,27 +35,46 @@ namespace WowUnity
             string mainDataPath = Application.dataPath.Replace("Assets", "");
 
             Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
-            foreach (var renderer in renderers)
+            AssetDatabase.StartAssetEditing();
+            try
             {
-                string pathToMetadata = $"{dirName}/tex_{renderer.name}.json";
-                var sr = new StreamReader(mainDataPath + pathToMetadata);
-                var jsonData = sr.ReadToEnd();
-                sr.Close();
+                var total = (float)renderers.Count();
 
-                var metadata = JsonConvert.DeserializeObject<Tex>(jsonData);
-                if (metadata.layers.Count == 0)
-                {
-                    continue;
+                for (var i = 0; i < total; i++) {
+                    var renderer = renderers[i];
+                    string pathToMetadata = $"{dirName}/tex_{renderer.name}.json";
+
+                    EditorUtility.DisplayProgressBar("Creating terrain materials.", pathToMetadata, i / total);
+
+                    var sr = new StreamReader(mainDataPath + pathToMetadata);
+                    var jsonData = sr.ReadToEnd();
+                    sr.Close();
+
+                    var metadata = JsonConvert.DeserializeObject<Tex>(jsonData);
+                    if (metadata.layers.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    for (var idx = 0; idx < metadata.layers.Count; idx++)
+                    {
+                        var texture = metadata.layers[idx];
+                        texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.file)));
+                        metadata.layers[idx] = texture;
+                    }
+
+                    renderer.material = MaterialUtility.GetTerrainMaterial(dirName, renderer.name, metadata);
                 }
-
-                for (var idx = 0; idx < metadata.layers.Count; idx++)
-                {
-                    var texture = metadata.layers[idx];
-                    texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.file)));
-                    metadata.layers[idx] = texture;
-                }
-
-                renderer.material = MaterialUtility.GetTerrainMaterial(dirName, renderer.name, metadata);
+            } catch (System.Exception e)
+            {
+                Debug.LogError($"{path}: failed processing terrain");
+                throw;
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                EditorUtility.ClearProgressBar();
             }
 
             GameObject prefab = M2Utility.FindOrCreatePrefab(path);

@@ -141,15 +141,20 @@ namespace WowUnity
         {
             importedModelPathQueue.Clear();
             EditorUtility.DisplayProgressBar("Postprocessing WoW assets", "Looking for assets.", 0);
-            string[] allAssets = AssetDatabase.GetAllAssetPaths();
-            foreach (string path in allAssets)
+            try
             {
-                if (WoWExportUnityPostprocessor.ValidAsset(path) && !ADTUtility.IsAdtObj(path))
+                string[] allAssets = AssetDatabase.GetAllAssetPaths();
+                foreach (string path in allAssets)
                 {
-                    QueuePostprocess(path);
+                    if (WoWExportUnityPostprocessor.ValidAsset(path) && !ADTUtility.IsAdtObj(path))
+                    {
+                        QueuePostprocess(path);
+                    }
                 }
+            } finally
+            {
+                EditorUtility.ClearProgressBar();
             }
-            EditorUtility.ClearProgressBar();
             PostProcessImports();
         }
     }
