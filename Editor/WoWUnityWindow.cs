@@ -115,8 +115,8 @@ public class WoWUnityWindow : EditorWindow
             TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(Path.ChangeExtension(path, "obj").Replace(".obj", "_ModelPlacementInformation.csv"));
             if (placementData == null)
             {
-                EditorUtility.DisplayDialog("Error", "ModelPlacementInformation.csv not found.", "Ok");
-                return;
+                Debug.LogWarning($"{path}: ModelPlacementInformation.csv not found.");
+                continue;
             }
 
             Debug.Log("Placing Doodads...");
