@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -26,7 +25,7 @@ namespace WowUnity
         public static void RunPostProcessImports()
         {
             var itemsToProcess = importedModelPathQueue.Count;
-            var itemsProcessed = 0;
+            var itemsProcessed = 0f;
 
             List<(string, TextAsset)> hasPlacement = new();
 
@@ -39,11 +38,7 @@ namespace WowUnity
                     break;
                 }
 
-                if (Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+.obj$"))
-                {
-                    ADTUtility.PostProcessImport(path);
-                }
-                else if (path.EndsWith("_invn.obj"))
+                if (path.EndsWith("_invn.obj"))
                 {
                     M2Utility.PostProcessDoubleSidedImport(path);
                 }
@@ -72,9 +67,17 @@ namespace WowUnity
                 itemsProcessed++;
             }
 
+            itemsToProcess = hasPlacement.Count;
+            itemsProcessed = 0f;
+
             foreach (var (path, placementData) in hasPlacement)
             {
+                if (EditorUtility.DisplayCancelableProgressBar("Placing doodads", path, itemsProcessed / itemsToProcess))
+                {
+                    break;
+                }
                 ItemCollectionUtility.PlaceModels(M2Utility.FindPrefab(path), placementData);
+                itemsProcessed++;
             }
         }
 
@@ -134,15 +137,14 @@ namespace WowUnity
             isBusy = false;
         }
 
-        [MenuItem("Jobs/WoWUnity/Postprocess all assets")]
-        private static void JobPostprocessAllAssets()
+        public static void JobPostprocessAllAssets()
         {
             importedModelPathQueue.Clear();
             EditorUtility.DisplayProgressBar("Postprocessing WoW assets", "Looking for assets.", 0);
             string[] allAssets = AssetDatabase.GetAllAssetPaths();
             foreach (string path in allAssets)
             {
-                if (WoWExportUnityPostprocessor.ValidAsset(path))
+                if (WoWExportUnityPostprocessor.ValidAsset(path) && !ADTUtility.IsAdtObj(path))
                 {
                     QueuePostprocess(path);
                 }

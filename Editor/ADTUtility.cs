@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,6 +9,16 @@ namespace WowUnity
 {
     class ADTUtility
     {
+        public static bool IsAdtObj(string path)
+        {
+            return Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+\.obj$");
+        }
+
+        public static bool IsAdtAny(string path)
+        {
+            return Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+\.(prefab|obj)$");
+        }
+
         public static void PostProcessImport(string path)
         {
             Debug.Log($"{path}: processing adt");
