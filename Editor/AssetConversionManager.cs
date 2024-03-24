@@ -17,6 +17,11 @@ namespace WowUnity
             importedModelPathQueue.Enqueue(filePath);
         }
 
+        public static bool HasQueue()
+        {
+            return importedModelPathQueue.Count > 0;
+        }
+
         public static bool IsBusy()
         {
             return isBusy;

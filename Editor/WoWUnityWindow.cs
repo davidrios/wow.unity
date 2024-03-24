@@ -113,6 +113,11 @@ public class WoWUnityWindow : EditorWindow
     {
         SetupTerrain();
 
+        if (AssetConversionManager.HasQueue())
+        {
+            AssetConversionManager.JobPostprocessAllAssets();
+        }
+
         foreach (var selectedAsset in selectedAssets.Values)
         {
             string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selectedAsset);
