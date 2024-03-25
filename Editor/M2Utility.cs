@@ -118,6 +118,11 @@ namespace WowUnity
                 renderers[idx].sharedMaterial = texturesByRenderer[renderers[idx].name];
             }
             var importedInst = PrefabUtility.InstantiatePrefab(imported, origPrefabInst.transform) as GameObject;
+            importedInst.isStatic = true;
+            foreach (Transform childTransform in importedInst.transform)
+            {
+                childTransform.gameObject.isStatic = true;
+            }
 
             PrefabUtility.ApplyPrefabInstance(origPrefabInst, InteractionMode.AutomatedAction);
             PrefabUtility.SavePrefabAsset(origPrefab);
