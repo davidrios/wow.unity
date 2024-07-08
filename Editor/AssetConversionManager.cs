@@ -67,7 +67,7 @@ namespace WowUnity
 
                     if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW assets", path, itemsProcessed / itemsToProcess))
                     {
-                        break;
+                        return;
                     }
 
                     M2Utility.PostProcessImport(path, jsonData);
@@ -90,7 +90,7 @@ namespace WowUnity
 
                 if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW WMOs", path, itemsProcessed / itemsToProcess))
                 {
-                    break;
+                    return;
                 }
 
                 WMOUtility.PostProcessImport(path, ReadAssetJson(path));
@@ -114,7 +114,7 @@ namespace WowUnity
 
                 if (EditorUtility.DisplayCancelableProgressBar("Setting up physics", path, itemsProcessed / itemsToProcess))
                 {
-                    break;
+                    return;
                 }
 
                 SetupPhysics(path);
@@ -129,7 +129,7 @@ namespace WowUnity
             {
                 if (EditorUtility.DisplayCancelableProgressBar("Placing doodads", path, itemsProcessed / itemsToProcess))
                 {
-                    break;
+                    return;
                 }
                 Debug.Log($"{path}: placing models");
                 ItemCollectionUtility.PlaceModels(M2Utility.FindPrefab(path), placementData);
