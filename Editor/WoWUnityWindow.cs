@@ -124,12 +124,8 @@ public class WoWUnityWindow : EditorWindow
 
     void PlaceDoodads()
     {
+        ProcessAssets();
         SetupTerrain();
-
-        if (AssetConversionManager.HasQueue())
-        {
-            AssetConversionManager.JobPostprocessAllAssets();
-        }
 
         foreach (var path in GetRootAdtPaths())
         {
