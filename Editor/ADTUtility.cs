@@ -40,6 +40,7 @@ namespace WowUnity
                     total += renderers.Count() + 1;
                 }
 
+                var mainDataPath = Application.dataPath.Replace("Assets", "");
                 foreach (var path in paths)
                 {
                     if (M2Utility.FindPrefab(path) != null)
@@ -50,7 +51,6 @@ namespace WowUnity
                     var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
                     var dirName = Path.GetDirectoryName(path);
-                    var mainDataPath = Application.dataPath.Replace("Assets", "");
 
                     Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
 
