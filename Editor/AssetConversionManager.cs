@@ -9,7 +9,9 @@ namespace WowUnity
 {
     class AssetConversionManager
     {
-        private static ConcurrentQueue<string> importedModelPathQueue = new();
+        private static readonly ConcurrentQueue<string> importedModelPathQueue = new();
+        private static readonly ConcurrentQueue<string> importedWMOPathQueue = new();
+        private static readonly ConcurrentQueue<string> physicsQueue = new();
         private static bool isBusy = false;
 
         public static void QueuePostprocess(string filePath)
@@ -19,12 +21,25 @@ namespace WowUnity
 
         public static bool HasQueue()
         {
-            return importedModelPathQueue.Count > 0;
+            return importedModelPathQueue.Count + importedWMOPathQueue.Count + physicsQueue.Count > 0;
         }
 
         public static bool IsBusy()
         {
             return isBusy;
+        }
+
+        public static string ReadAssetJson(string path)
+        {
+            var dirName = Path.GetDirectoryName(path);
+            string pathToMetadata = dirName + "/" + Path.GetFileNameWithoutExtension(path) + ".json";
+            string mainDataPath = Application.dataPath.Replace("Assets", "");
+
+            var sr = new StreamReader(mainDataPath + pathToMetadata);
+            var jsonData = sr.ReadToEnd();
+            sr.Close();
+
+            return jsonData;
         }
 
         public static void RunPostProcessImports()
@@ -34,26 +49,51 @@ namespace WowUnity
 
             List<(string, TextAsset)> hasPlacement = new();
 
-            while (importedModelPathQueue.TryDequeue(out string path))
+            AssetDatabase.StartAssetEditing();
+            try
+            {
+                while (importedModelPathQueue.TryDequeue(out string path))
+                {
+                    Debug.Log($"{path}: postprocessing");
+
+                    var jsonData = ReadAssetJson(path);
+
+                    if (WMOUtility.IsWMO(jsonData))
+                    {
+                        // process this separately because of StartAssetEditing issues
+                        importedWMOPathQueue.Enqueue(path);
+                        continue;
+                    }
+
+                    if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW assets", path, itemsProcessed / itemsToProcess))
+                    {
+                        break;
+                    }
+
+                    M2Utility.PostProcessImport(path, jsonData);
+
+                    // process this separately because of StartAssetEditing issues
+                    physicsQueue.Enqueue(path);
+
+                    itemsProcessed++;
+                }
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+            }
+
+            while (importedWMOPathQueue.TryDequeue(out string path))
             {
                 Debug.Log($"{path}: postprocessing");
 
-                if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW assets", path, itemsProcessed / itemsToProcess))
+                if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW WMOs", path, itemsProcessed / itemsToProcess))
                 {
                     break;
                 }
 
-                var dirName = Path.GetDirectoryName(path);
-                string pathToMetadata = dirName + "/" + Path.GetFileNameWithoutExtension(path) + ".json";
-                string mainDataPath = Application.dataPath.Replace("Assets", "");
-
-                var sr = new StreamReader(mainDataPath + pathToMetadata);
-                var jsonData = sr.ReadToEnd();
-                sr.Close();
-
-                M2Utility.PostProcessImport(path, jsonData);
-                WMOUtility.PostProcessImport(path, jsonData);
-
+                WMOUtility.PostProcessImport(path, ReadAssetJson(path));
                 SetupPhysics(path);
 
                 TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(path.Replace(".obj", "_ModelPlacementInformation.csv"));
@@ -61,6 +101,23 @@ namespace WowUnity
                 {
                     hasPlacement.Add((path, placementData));
                 }
+
+                itemsProcessed++;
+            }
+
+            itemsToProcess = physicsQueue.Count;
+            itemsProcessed = 0f;
+
+            while (physicsQueue.TryDequeue(out string path))
+            {
+                Debug.Log($"{path}: setup physics");
+
+                if (EditorUtility.DisplayCancelableProgressBar("Setting up physics", path, itemsProcessed / itemsToProcess))
+                {
+                    break;
+                }
+
+                SetupPhysics(path);
 
                 itemsProcessed++;
             }
@@ -117,7 +174,7 @@ namespace WowUnity
 
         public static void PostProcessImports()
         {
-            if (importedModelPathQueue.Count == 0)
+            if (importedModelPathQueue.Count + importedWMOPathQueue.Count + physicsQueue.Count == 0)
             {
                 return;
             }
@@ -127,7 +184,8 @@ namespace WowUnity
             try
             {
                 RunPostProcessImports();
-            } finally
+            }
+            finally
             {
                 EditorUtility.ClearProgressBar();
             }
@@ -139,6 +197,9 @@ namespace WowUnity
         public static void JobPostprocessAllAssets()
         {
             importedModelPathQueue.Clear();
+            importedWMOPathQueue.Clear();
+            physicsQueue.Clear();
+
             EditorUtility.DisplayProgressBar("Postprocessing WoW assets", "Looking for assets.", 0);
             try
             {
@@ -150,7 +211,8 @@ namespace WowUnity
                         QueuePostprocess(path);
                     }
                 }
-            } finally
+            }
+            finally
             {
                 EditorUtility.ClearProgressBar();
             }

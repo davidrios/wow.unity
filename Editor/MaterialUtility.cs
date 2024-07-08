@@ -112,7 +112,6 @@ namespace WowUnity
             }
 
             AssetDatabase.CreateAsset(material, assetMatPath);
-            AssetDatabase.SaveAssets();
 
             return material;
         }
@@ -138,6 +137,7 @@ namespace WowUnity
                     (unitMat.flags & (short)MaterialFlags.TwoSided) != (short)MaterialFlags.None); // is two-sided
             }
 
+            AssetDatabase.SaveAssets();
             return mats;
         }
 
@@ -158,6 +158,7 @@ namespace WowUnity
                 }
             }
 
+            AssetDatabase.SaveAssets();
             return mats;
         }
 

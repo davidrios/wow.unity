@@ -8,6 +8,12 @@ namespace WowUnity
 {
     class WMOUtility
     {
+        public static bool IsWMO(string jsonData)
+        {
+            var metadata = JsonConvert.DeserializeObject<WMO>(jsonData);
+            return metadata.fileType == "wmo";
+        }
+
         public static void PostProcessImport(string path, string jsonData)
         {
             var metadata = JsonConvert.DeserializeObject<WMO>(jsonData);
