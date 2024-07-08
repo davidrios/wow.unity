@@ -55,6 +55,7 @@ namespace WowUnity
             material.SetFloat("_WorkflowMode", 0);
             material.SetFloat("_Smoothness", 0);
             if (shader == 1) {
+                material.SetFloat("_Smoothness", 1);
                 material.SetFloat("_SmoothnessTextureChannel", 1);
             }
 
