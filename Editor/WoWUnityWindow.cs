@@ -118,11 +118,7 @@ public class WoWUnityWindow : EditorWindow
 
     void SetupTerrain()
     {
-        foreach (var path in GetRootAdtPaths())
-        {
-            ADTUtility.PostProcessImport(path);
-        }
-
+        ADTUtility.PostProcessImports(GetRootAdtPaths());
         Debug.Log("Done setting up terrain.");
     }
 

@@ -20,58 +20,74 @@ namespace WowUnity
             return Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+\.(prefab|obj)$");
         }
 
-        public static void PostProcessImport(string path)
+        public static void PostProcessImports(List<string> paths)
         {
-            Debug.Log($"{path}: processing adt");
+            var total = 0f;
+            var itemsProcessed = 0f;
 
-            if (M2Utility.FindPrefab(path) != null)
-            {
-                return;
-            }
-
-            var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-
-            var dirName = Path.GetDirectoryName(path);
-            string mainDataPath = Application.dataPath.Replace("Assets", "");
-
-            Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
             AssetDatabase.StartAssetEditing();
             try
             {
-                var total = (float)renderers.Count();
-
-                for (var i = 0; i < total; i++) {
-                    var renderer = renderers[i];
-                    string pathToMetadata = $"{dirName}/tex_{renderer.name}.json";
-
-                    EditorUtility.DisplayProgressBar("Creating terrain materials.", pathToMetadata, i / total);
-
-                    var sr = new StreamReader(mainDataPath + pathToMetadata);
-                    var jsonData = sr.ReadToEnd();
-                    sr.Close();
-
-                    var metadata = JsonConvert.DeserializeObject<Tex>(jsonData);
-                    if (metadata.layers.Count == 0)
+                foreach (var path in paths)
+                {
+                    if (M2Utility.FindPrefab(path) != null)
                     {
                         continue;
                     }
 
-                    for (var idx = 0; idx < metadata.layers.Count; idx++)
-                    {
-                        var texture = metadata.layers[idx];
-                        texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.file)));
-                        metadata.layers[idx] = texture;
-                    }
-
-                    renderer.material = MaterialUtility.GetTerrainMaterial(dirName, renderer.name, metadata);
-
-                    //ADT Liquid Volume Queue
-                    // LiquidUtility.QueueLiquidData($"{dirName}/liquid_{renderer.name}.json");
+                    var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
+                    total += renderers.Count() + 1;
                 }
 
-            } catch (System.Exception)
+                foreach (var path in paths)
+                {
+                    if (M2Utility.FindPrefab(path) != null)
+                    {
+                        continue;
+                    }
+
+                    var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+                    var dirName = Path.GetDirectoryName(path);
+                    var mainDataPath = Application.dataPath.Replace("Assets", "");
+
+                    Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
+
+                    foreach (var renderer in renderers)
+                    {
+                        var pathToMetadata = $"{dirName}/tex_{renderer.name}.json";
+
+                        if (EditorUtility.DisplayCancelableProgressBar("Creating terrain materials.", pathToMetadata, itemsProcessed / total))
+                        {
+                            return;
+                        }
+
+                        var sr = new StreamReader(mainDataPath + pathToMetadata);
+                        var jsonData = sr.ReadToEnd();
+                        sr.Close();
+
+                        var metadata = JsonConvert.DeserializeObject<Tex>(jsonData);
+                        if (metadata.layers.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        for (var idx = 0; idx < metadata.layers.Count; idx++)
+                        {
+                            var texture = metadata.layers[idx];
+                            texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.file)));
+                            metadata.layers[idx] = texture;
+                        }
+
+                        renderer.material = MaterialUtility.GetTerrainMaterial(dirName, renderer.name, metadata);
+                        itemsProcessed++;
+                    }
+                }
+            }
+            catch (System.Exception)
             {
-                Debug.LogError($"{path}: failed processing terrain");
+                Debug.LogError($"failed processing terrain materials");
                 throw;
             }
             finally
@@ -81,17 +97,41 @@ namespace WowUnity
                 EditorUtility.ClearProgressBar();
             }
 
-            GameObject prefab = M2Utility.FindOrCreatePrefab(path);
+            try
+            {
+                foreach (var path in paths)
+                {
+                    if (M2Utility.FindPrefab(path) != null)
+                    {
+                        continue;
+                    }
 
-            var rootDoodadSetsObj = new GameObject("EnvironmentSet") { isStatic = true };
+                    if (EditorUtility.DisplayCancelableProgressBar("Creating terrain materials.", path, itemsProcessed / total))
+                    {
+                        return;
+                    }
 
-            GameObject prefabInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-            rootDoodadSetsObj.transform.parent = prefabInst.transform;
-            PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
-            PrefabUtility.SavePrefabAsset(prefab);
-            Object.DestroyImmediate(rootDoodadSetsObj);
-            Object.DestroyImmediate(prefabInst);
-            AssetDatabase.Refresh();
+                    //ADT Liquid Volume Queue
+                    // LiquidUtility.QueueLiquidData(xxx);
+
+                    GameObject prefab = M2Utility.FindOrCreatePrefab(path);
+
+                    var rootDoodadSetsObj = new GameObject("EnvironmentSet") { isStatic = true };
+
+                    GameObject prefabInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                    rootDoodadSetsObj.transform.parent = prefabInst.transform;
+                    PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
+                    PrefabUtility.SavePrefabAsset(prefab);
+                    Object.DestroyImmediate(rootDoodadSetsObj);
+                    Object.DestroyImmediate(prefabInst);
+                    AssetDatabase.Refresh();
+
+                    itemsProcessed++;
+                }
+            } finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
         }
 
         public class Tex
