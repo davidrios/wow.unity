@@ -25,7 +25,7 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
         return (
             File.Exists(Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + ".json") ||
-            Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+.obj$")
+            ADTUtility.IsAdtObj(path)
         );
     }
 
