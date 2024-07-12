@@ -50,7 +50,7 @@ namespace WowUnity
                 foreach (var doodadSet in metadata.doodadSets) {
                     var setObj = new GameObject(doodadSet.name) { isStatic = true };
                     setObj.transform.parent = rootDoodadSetsObj.transform;
-                    setObj.SetActive(doodadSet.name != "Set_$DefaultGlobal");
+                    setObj.SetActive(doodadSet.name == "Set_$DefaultGlobal");
                 }
 
                 GameObject prefabInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
