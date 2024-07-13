@@ -47,7 +47,7 @@ public class WoWUnityWindow : EditorWindow
 
     private void OnGUI()
     {
-        var settings = Settings.getSettings();
+        var settings = Settings.GetSettings();
 
         GUILayout.Label("Settings", EditorStyles.boldLabel);
         if (GUILayout.Button("Open Settings"))

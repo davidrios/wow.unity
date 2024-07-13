@@ -110,7 +110,7 @@ namespace WowUnity
             itemsToProcess = physicsQueue.Count;
             itemsProcessed = 0f;
 
-            var createCollisionForAllM2 = Settings.getSettings().createCollisionForAllM2;
+            var createCollisionForAllM2 = Settings.GetSettings().createCollisionForAllM2;
 
             while (physicsQueue.TryDequeue(out string path))
             {

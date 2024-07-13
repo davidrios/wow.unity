@@ -1,3 +1,4 @@
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -11,17 +12,30 @@ namespace WowUnity
 
     public class Settings : ScriptableObject
     {
-        public static Settings getSettings ()
+        const string SettingsPath = "Assets/Settings/WoWUnitySettings.asset";
+
+        private static Settings instance;
+
+        public static Settings GetSettings()
         {
-            var settingsPath = "Assets/Settings/WoWUnitySettings.asset";
-            var settings = AssetDatabase.LoadAssetAtPath<Settings>(settingsPath);
-            if (settings == null)
+            if (instance != null)
+                return instance;
+
+            instance = AssetDatabase.LoadAssetAtPath<Settings>(SettingsPath);
+            if (instance != null)
+                return instance;
+
+            var settingsDir = Path.GetDirectoryName(SettingsPath);
+            if (!Directory.Exists(settingsDir))
             {
-                settings = CreateInstance<Settings>();
-                AssetDatabase.CreateAsset(settings, settingsPath);
-                AssetDatabase.SaveAssets();
+                Directory.CreateDirectory(settingsDir);
             }
-            return settings;
+
+            instance = CreateInstance<Settings>();
+            AssetDatabase.CreateAsset(instance, SettingsPath);
+            AssetDatabase.SaveAssets();
+
+            return instance;
         }
 
         public RenderingPipeline renderingPipeline = RenderingPipeline.URP;
