@@ -9,6 +9,7 @@ Shader "wow.unity/BirpTerrainShader"
         _Layer2Tex ("Layer 2 (RGBA)", 2D) = "white" {}
         _Layer3Tex ("Layer 3 (RGBA)", 2D) = "white" {}
         _Layer4Tex ("Layer 4 (RGBA)", 2D) = "white" {}
+        _Smoothness ("Smoothness", float) = 1
     }
     SubShader
     {
@@ -36,6 +37,7 @@ Shader "wow.unity/BirpTerrainShader"
         };
 
         fixed4 _Color;
+        float _Smoothness;
 
         // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
         // See https://docs.unity3d.com/Manual/GPUInstancing.html for more information about instancing.
@@ -65,7 +67,7 @@ Shader "wow.unity/BirpTerrainShader"
             s = lerp(s, c2.a, blend.g);
             s = lerp(s, c3.a, blend.b);
             s = lerp(c4.a, s, blend.a);
-            o.Smoothness = s;
+            o.Smoothness = s * _Smoothness;
 
             o.Alpha = 1;
         }

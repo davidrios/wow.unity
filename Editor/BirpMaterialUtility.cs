@@ -102,6 +102,7 @@ namespace WowUnity
 
             assetMat.SetTexture("_MaskTex", mask);
             assetMat.SetTexture("_Layer0Tex", textures[0]);
+            assetMat.SetFloat("_Smoothness", metadata.layers[0].assetPath.EndsWith("_s.png") ? 1 : 0);
             if (textures.Count >= 2)
                 assetMat.SetTexture("_Layer1Tex", textures[1]);
             if (textures.Count >= 3)
