@@ -12,12 +12,12 @@ namespace WowUnity
     {
         public static bool IsAdtObj(string path)
         {
-            return Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+\.obj$");
+            return Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+(_.+)?\.obj$");
         }
 
         public static bool IsAdtAny(string path)
         {
-            return Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+\.(prefab|obj)$");
+            return Regex.IsMatch(Path.GetFileName(path), @"^adt_\d+_\d+(_.+)?\.(prefab|obj)$");
         }
 
         public static void PostProcessImports(List<string> paths)
@@ -101,31 +101,7 @@ namespace WowUnity
             {
                 foreach (var path in paths)
                 {
-                    if (M2Utility.FindPrefab(path) != null)
-                    {
-                        continue;
-                    }
-
-                    if (EditorUtility.DisplayCancelableProgressBar("Creating terrain materials.", path, itemsProcessed / total))
-                    {
-                        return;
-                    }
-
-                    //ADT Liquid Volume Queue
-                    // LiquidUtility.QueueLiquidData(xxx);
-
-                    GameObject prefab = M2Utility.FindOrCreatePrefab(path);
-
-                    var rootDoodadSetsObj = new GameObject("EnvironmentSet") { isStatic = true };
-
-                    GameObject prefabInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                    rootDoodadSetsObj.transform.parent = prefabInst.transform;
-                    PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
-                    PrefabUtility.SavePrefabAsset(prefab);
-                    Object.DestroyImmediate(rootDoodadSetsObj);
-                    Object.DestroyImmediate(prefabInst);
-                    AssetDatabase.Refresh();
-
+                    M2Utility.FindOrCreatePrefab(path);
                     itemsProcessed++;
                 }
             } finally

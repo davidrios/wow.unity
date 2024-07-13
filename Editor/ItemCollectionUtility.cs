@@ -25,7 +25,7 @@ namespace WowUnity
                 childTransform.gameObject.isStatic = true;
             }
 
-            ParseFileAndSpawnDoodads(instantiatedGameObject, modelPlacementInformation);
+            PlaceModelsOnPrefab(instantiatedGameObject, modelPlacementInformation);
 
             PrefabUtility.ApplyPrefabInstance(instantiatedGameObject, InteractionMode.AutomatedAction);
             PrefabUtility.SavePrefabAsset(prefab);
@@ -33,16 +33,23 @@ namespace WowUnity
             Object.DestroyImmediate(instantiatedGameObject);
         }
 
-        private static void ParseFileAndSpawnDoodads(GameObject instantiatedPrefabGObj, TextAsset modelPlacementInformation)
+        private static Transform GetOrCreateRoot(Transform destination, string name)
+        {
+            var root = destination.Find(name);
+            if (root == null)
+            {
+                var newRootGO = new GameObject(name) { isStatic = true };
+                newRootGO.transform.parent = destination;
+                root = newRootGO.transform;
+            }
+            return root;
+        }
+
+        private static void PlaceModelsOnPrefab(GameObject instantiatedPrefabGObj, TextAsset modelPlacementInformation)
         {
             var isAdt = Regex.IsMatch(modelPlacementInformation.name, @"adt_\d+_\d+");
 
-            Transform doodadSetRoot;
-            if (isAdt) {
-                doodadSetRoot = instantiatedPrefabGObj.transform.Find("EnvironmentSet");
-            } else {
-                doodadSetRoot = instantiatedPrefabGObj.transform.Find("DoodadSets");
-            }
+            var doodadSetRoot = GetOrCreateRoot(instantiatedPrefabGObj.transform, isAdt ? "EnvironmentSet" : "DoodadSets");
 
             if (doodadSetRoot == null)
             {
@@ -51,20 +58,29 @@ namespace WowUnity
             }
 
             if (doodadSetRoot.Find("doodadsplaced") != null)
-            {
                 return;
-            }
 
+            ParseFileAndSpawnDoodads(doodadSetRoot, modelPlacementInformation);
+            if (isAdt)
+                ParseFileAndSpawnDoodads(GetOrCreateRoot(instantiatedPrefabGObj.transform, "WMOSet"), modelPlacementInformation, typeToPlace: "wmo");
+
+            var placed = new GameObject("doodadsplaced");
+            placed.transform.parent = doodadSetRoot.transform;
+        }
+
+        private static void ParseFileAndSpawnDoodads(Transform doodadSetRoot, TextAsset modelPlacementInformation, string typeToPlace = "m2", bool useSetSubtrees = true)
+        {
+            var isAdt = Regex.IsMatch(modelPlacementInformation.name, @"adt_\d+_\d+");
+
+            var placementFileDir = Path.GetDirectoryName(AssetDatabase.GetAssetPath(modelPlacementInformation));
             string[] records = modelPlacementInformation.text.Split(CSV_LINE_SEPERATOR);
             foreach (string record in records.Skip(1))
             {
                 string[] fields = record.Split(CSV_COLUMN_SEPERATOR);
                 if (fields.Length < 11)
-                {
                     continue;
-                }
 
-                string doodadPath = Path.GetDirectoryName(PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(instantiatedPrefabGObj)) + Path.DirectorySeparatorChar + fields[0];
+                string doodadPath = placementFileDir + Path.DirectorySeparatorChar + fields[0];
                 doodadPath = Path.GetFullPath(doodadPath);
                 doodadPath = $"Assets{Path.DirectorySeparatorChar}" + doodadPath.Substring(Application.dataPath.Length + 1); //This is so nifty :3
 
@@ -74,6 +90,10 @@ namespace WowUnity
 
                 if (isAdt)
                 {
+                    var doodadType = fields[10];
+                    if (doodadType != typeToPlace)
+                        continue;
+
                     doodadPosition.x = MAXIMUM_DISTANCE_FROM_ORIGIN - float.Parse(fields[1], CultureInfo.InvariantCulture);
                     doodadPosition.z = (MAXIMUM_DISTANCE_FROM_ORIGIN - float.Parse(fields[3], CultureInfo.InvariantCulture)) * -1f;
                     doodadPosition.y = float.Parse(fields[2], CultureInfo.InvariantCulture);
@@ -86,35 +106,44 @@ namespace WowUnity
                     doodadRotation.eulerAngles = eulerRotation;
 
                     var spawned = SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, doodadSetRoot);
-                    var doodadSets = fields[13].Split(",");
-                    foreach (var setName in doodadSets) {
-                        var childObj = spawned.transform.Find($"DoodadSets/{setName}");
-                        if (childObj != null) {
-                            childObj.gameObject.SetActive(true);
+                    if (doodadType == "wmo")
+                    {
+                        var doodadSets = fields[13].Split(",");
+                        foreach (var setName in doodadSets)
+                        {
+                            var childObj = spawned.transform.Find($"DoodadSets/{setName}");
+                            if (childObj != null)
+                            {
+                                childObj.gameObject.SetActive(true);
+                            }
                         }
                     }
                 }
                 else
                 {
                     doodadPosition = new Vector3(
-                        float.Parse(fields[1], CultureInfo.InvariantCulture), 
-                        float.Parse(fields[3], CultureInfo.InvariantCulture), 
+                        float.Parse(fields[1], CultureInfo.InvariantCulture),
+                        float.Parse(fields[3], CultureInfo.InvariantCulture),
                         float.Parse(fields[2], CultureInfo.InvariantCulture)
                     );
                     doodadRotation = new Quaternion(
-                        float.Parse(fields[5], CultureInfo.InvariantCulture) * -1, 
-                        float.Parse(fields[7], CultureInfo.InvariantCulture), 
-                        float.Parse(fields[6], CultureInfo.InvariantCulture) * -1, 
+                        float.Parse(fields[5], CultureInfo.InvariantCulture) * -1,
+                        float.Parse(fields[7], CultureInfo.InvariantCulture),
+                        float.Parse(fields[6], CultureInfo.InvariantCulture) * -1,
                         float.Parse(fields[4], CultureInfo.InvariantCulture) * -1
                     );
 
-                    var doodadSubsetRoot = doodadSetRoot.transform.Find(fields[9]);
-                    SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, doodadSubsetRoot);
+                    var setName = fields[9];
+                    var placementRoot = doodadSetRoot;
+                    if (useSetSubtrees)
+                    {
+                        placementRoot = GetOrCreateRoot(doodadSetRoot, setName);
+                        placementRoot.gameObject.SetActive(setName == "Set_$DefaultGlobal");
+                    }
+
+                    SpawnDoodad(doodadPath, doodadPosition, doodadRotation, doodadScale, placementRoot);
                 }
             }
-
-            var placed = new GameObject("doodadsplaced");
-            placed.transform.parent = doodadSetRoot.transform;
         }
 
         private static GameObject SpawnDoodad(string path, Vector3 position, Quaternion rotation, float scaleFactor, Transform parent)

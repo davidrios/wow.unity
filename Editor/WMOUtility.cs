@@ -43,24 +43,7 @@ namespace WowUnity
             }
             AssetDatabase.Refresh();
 
-            GameObject prefab = M2Utility.FindOrCreatePrefab(path);
-
-            if (metadata.doodadSets.Count > 0) {
-                var rootDoodadSetsObj = new GameObject("DoodadSets") { isStatic = true };
-                foreach (var doodadSet in metadata.doodadSets) {
-                    var setObj = new GameObject(doodadSet.name) { isStatic = true };
-                    setObj.transform.parent = rootDoodadSetsObj.transform;
-                    setObj.SetActive(doodadSet.name == "Set_$DefaultGlobal");
-                }
-
-                GameObject prefabInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                rootDoodadSetsObj.transform.parent = prefabInst.transform;
-                PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
-                PrefabUtility.SavePrefabAsset(prefab);
-                Object.DestroyImmediate(rootDoodadSetsObj);
-                Object.DestroyImmediate(prefabInst);
-                AssetDatabase.Refresh();
-            }
+            M2Utility.FindOrCreatePrefab(path);
         }
 
         public static bool AssignVertexColors(WMOUtility.Group group, List<GameObject> gameObjects)
