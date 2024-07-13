@@ -78,7 +78,7 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
             return;
         }
 
-        if (!File.Exists(assetPath.Replace(".obj", ".phys.obj")))
+        if (ADTUtility.IsAdtObj(assetPath))
         {
             MeshRenderer[] childRenderers = gameObject.GetComponentsInChildren<MeshRenderer>();
             foreach (MeshRenderer child in childRenderers)

@@ -43,7 +43,18 @@ namespace WowUnity
             }
             AssetDatabase.Refresh();
 
-            M2Utility.FindOrCreatePrefab(path);
+            GameObject prefab = M2Utility.FindOrCreatePrefab(path);
+            GameObject prefabInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+
+            MeshRenderer[] childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
+            foreach (MeshRenderer child in childRenderers)
+            {
+                child.gameObject.AddComponent<MeshCollider>();
+            }
+            PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
+            PrefabUtility.SavePrefabAsset(prefab);
+
+            Object.DestroyImmediate(prefabInst);
         }
 
         public static bool AssignVertexColors(WMOUtility.Group group, List<GameObject> gameObjects)

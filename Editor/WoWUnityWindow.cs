@@ -47,8 +47,20 @@ public class WoWUnityWindow : EditorWindow
 
     private void OnGUI()
     {
+        var settings = Settings.getSettings();
+
+        GUILayout.Label("Settings", EditorStyles.boldLabel);
+        if (GUILayout.Button("Open Settings"))
+        {
+            Selection.activeObject = settings;
+            EditorGUIUtility.PingObject(settings);
+            EditorApplication.ExecuteMenuItem("Window/General/Inspector");
+        }
+
+        GUILayout.Space(10);
+
         GUILayout.Label("All Assets", EditorStyles.boldLabel);
-        if (GUILayout.Button("Process"))
+        if (GUILayout.Button($"Process ({settings.renderingPipeline})"))
         {
             ProcessAssets();
         }
@@ -74,7 +86,7 @@ public class WoWUnityWindow : EditorWindow
             try
             {
 
-                if (GUILayout.Button("Setup Terrain"))
+                if (GUILayout.Button($"Setup Terrain ({settings.renderingPipeline})"))
                 {
                     SetupTerrain();
                 }

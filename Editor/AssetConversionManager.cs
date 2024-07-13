@@ -70,10 +70,13 @@ namespace WowUnity
                         return;
                     }
 
-                    M2Utility.PostProcessImport(path, jsonData);
+                    if (M2Utility.FindPrefab(path) == null)
+                    {
+                        // process this separately because of StartAssetEditing issues
+                        physicsQueue.Enqueue(path);
+                    }
 
-                    // process this separately because of StartAssetEditing issues
-                    physicsQueue.Enqueue(path);
+                    M2Utility.PostProcessImport(path, jsonData);
 
                     itemsProcessed++;
                 }
@@ -94,7 +97,6 @@ namespace WowUnity
                 }
 
                 WMOUtility.PostProcessImport(path, ReadAssetJson(path));
-                SetupPhysics(path);
 
                 TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(path.Replace(".obj", "_ModelPlacementInformation.csv"));
                 if (placementData != null)
@@ -108,6 +110,8 @@ namespace WowUnity
             itemsToProcess = physicsQueue.Count;
             itemsProcessed = 0f;
 
+            var createCollisionForAllM2 = Settings.getSettings().createCollisionForAllM2;
+
             while (physicsQueue.TryDequeue(out string path))
             {
                 Debug.Log($"{path}: setup physics");
@@ -117,7 +121,7 @@ namespace WowUnity
                     return;
                 }
 
-                SetupPhysics(path);
+                SetupPhysics(path, createCollisionForAllM2);
 
                 itemsProcessed++;
             }
@@ -137,15 +141,29 @@ namespace WowUnity
             }
         }
 
-        public static void SetupPhysics(string path)
+        public static void SetupPhysics(string path, bool useMesh)
         {
+            var prefab = M2Utility.FindPrefab(path);
+            GameObject prefabInst;
+
             GameObject physicsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(path.Replace(".obj", ".phys.obj"));
             if (physicsPrefab == null)
             {
+                if (useMesh)
+                {
+                    prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+                    MeshRenderer[] childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
+                    foreach (MeshRenderer child in childRenderers)
+                    {
+                        child.gameObject.AddComponent<MeshCollider>();
+                    }
+                    PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
+                    PrefabUtility.SavePrefabAsset(prefab);
+                    Object.DestroyImmediate(prefabInst);
+                }
+
                 return;
             }
-
-            var prefab = M2Utility.FindPrefab(path);
 
             if (prefab.transform.Find("Collision") != null)
             {
@@ -158,7 +176,7 @@ namespace WowUnity
                 return;
             }
 
-            var prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+            prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
             prefabInst.GetComponentsInChildren<MeshCollider>().ToList().ForEach(collider => Object.DestroyImmediate(collider));
 
             GameObject collider = new();
