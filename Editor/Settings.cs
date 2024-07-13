@@ -7,7 +7,7 @@ namespace WowUnity
     public enum RenderingPipeline
     {
         URP,
-        //BiRP
+        BiRP
     }
 
     public class Settings : ScriptableObject

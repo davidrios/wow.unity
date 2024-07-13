@@ -120,6 +120,7 @@ namespace WowUnity
         public static Dictionary<uint, (Material, bool)> GetSkinMaterials(M2Utility.M2 metadata)
         {
             Dictionary<uint, (Material, bool)> mats = new();
+            var isBirp = Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP;
 
             foreach (var textureUnit in metadata.skin.textureUnits) {
                 var texture = metadata.textures[metadata.textureCombos[checked((int)textureUnit.textureComboIndex)]];
@@ -134,7 +135,9 @@ namespace WowUnity
                 }
 
                 mats[textureUnit.skinSectionIndex] = (
-                    GetMaterial(texture, MaterialFor.M2, unitMat.flags, unitMat.blendingMode, 0, materialColor),
+                    isBirp
+                        ? BirpMaterialUtility.GetMaterial(texture, MaterialFor.M2, unitMat.flags, unitMat.blendingMode, 0, materialColor)
+                        : GetMaterial(texture, MaterialFor.M2, unitMat.flags, unitMat.blendingMode, 0, materialColor),
                     (unitMat.flags & (short)MaterialFlags.TwoSided) != (short)MaterialFlags.None); // is two-sided
             }
 
@@ -145,7 +148,7 @@ namespace WowUnity
         public static Dictionary<string, Material> GetWMOMaterials(WMOUtility.WMO metadata)
         {
             Dictionary<string, Material> mats = new();
-
+            var isBirp = Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP;
             var texturesById = metadata.textures.ToDictionary((item) => item.fileDataID);
 
             foreach (var group in metadata.groups) {
@@ -154,7 +157,9 @@ namespace WowUnity
                     var batchMat = metadata.materials[checked((int)batch.materialID)];
                     var texture = texturesById[batchMat.texture1];
 
-                    var material = GetMaterial(texture, MaterialFor.WMO, batchMat.flags, batchMat.blendMode, batchMat.shader, Color.white);
+                    var material = isBirp
+                        ? BirpMaterialUtility.GetMaterial(texture, MaterialFor.WMO, batchMat.flags, batchMat.blendMode, batchMat.shader, Color.white)
+                        : GetMaterial(texture, MaterialFor.WMO, batchMat.flags, batchMat.blendMode, batchMat.shader, Color.white);
                     mats[$"{group.groupName}{batchIdx}"] = material;
                 }
             }
@@ -164,6 +169,14 @@ namespace WowUnity
         }
 
         public static Material GetTerrainMaterial(string dirName, string chunkName, ADTUtility.Tex metadata)
+        {
+            var isBirp = Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP;
+            return isBirp
+                ? BirpMaterialUtility.GetTerrainMaterial(dirName, chunkName, metadata)
+                : _GetTerrainMaterial(dirName, chunkName, metadata);
+        }
+
+        public static Material _GetTerrainMaterial(string dirName, string chunkName, ADTUtility.Tex metadata)
         {
             var matDir = Path.Join(dirName, "terrain_materials");
             if (!Directory.Exists(matDir))
