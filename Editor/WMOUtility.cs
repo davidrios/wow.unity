@@ -17,14 +17,11 @@ namespace WowUnity
         public static void PostProcessImport(string path, string jsonData)
         {
             var metadata = JsonConvert.DeserializeObject<WMO>(jsonData);
-            if (metadata.fileType != "wmo") {
+            if (metadata.fileType != "wmo")
                 return;
-            }
 
             if (M2Utility.FindPrefab(path) != null)
-            {
                 return;
-            }
 
             Debug.Log($"{path}: processing wmo");
 
@@ -32,7 +29,7 @@ namespace WowUnity
 
             var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
-            Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
+            var renderers = imported.GetComponentsInChildren<Renderer>();
 
             var materials = MaterialUtility.GetWMOMaterials(metadata);
 
@@ -43,11 +40,11 @@ namespace WowUnity
             }
             AssetDatabase.Refresh();
 
-            GameObject prefab = M2Utility.FindOrCreatePrefab(path);
-            GameObject prefabInst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            var prefab = M2Utility.FindOrCreatePrefab(path);
+            var prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
 
-            MeshRenderer[] childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
-            foreach (MeshRenderer child in childRenderers)
+            var childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
+            foreach (var child in childRenderers)
             {
                 child.gameObject.AddComponent<MeshCollider>();
             }
@@ -65,13 +62,13 @@ namespace WowUnity
                 return false;
             }
 
-            for (int i = 0; i < gameObjects.Count; i++)
+            for (var i = 0; i < gameObjects.Count; i++)
             {
-                GameObject gameObject = gameObjects[i];
-                WMOUtility.RenderBatch renderBatch = group.renderBatches[i];
-                MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
-                Mesh mesh = meshFilter.sharedMesh;
-                
+                var gameObject = gameObjects[i];
+                var renderBatch = group.renderBatches[i];
+                var meshFilter = gameObject.GetComponent<MeshFilter>();
+                var mesh = meshFilter.sharedMesh;
+
                 if (mesh == null)
                 {
                     Debug.LogError("Attempted to assign vertex colors to WMO, but mesh was missing.");
@@ -86,12 +83,12 @@ namespace WowUnity
 
         static Color[] GetVertexColorsInRange(WMOUtility.Group group, int start, int end)
         {
-            List<byte[]> vertexColors = group.vertexColors.GetRange(start, end - start);
-            List<Color> parsedColors = new List<Color>();
+            var vertexColors = group.vertexColors.GetRange(start, end - start);
+            var parsedColors = new List<Color>();
 
             for (int i = 0; i < vertexColors.Count; i++)
             {
-                Color newColor = new Color();
+                var newColor = new Color();
                 byte[] colorData = vertexColors[i];
                 newColor.a = (float)colorData[0] / 255f;
                 newColor.r = (float)colorData[1] / 255f;
@@ -136,25 +133,27 @@ namespace WowUnity
             public uint materialID;
         }
 
-        public class Material {
+        public class Material
+        {
             public short flags;
             public int shader;
             public uint blendMode;
             public uint texture1;
-			public uint color1;
-			public uint color1b;
-			public uint texture2;
-			public uint color2;
-			public uint groupType;
-			public uint texture3;
-			public uint color3;
-			public uint flags3;
+            public uint color1;
+            public uint color1b;
+            public uint texture2;
+            public uint color2;
+            public uint groupType;
+            public uint texture3;
+            public uint color3;
+            public uint flags3;
         }
 
-        public class DoodadSet {
+        public class DoodadSet
+        {
             public string name;
-			public uint firstInstanceIndex;
-			public uint doodadCount;
+            public uint firstInstanceIndex;
+            public uint doodadCount;
         }
     }
 }

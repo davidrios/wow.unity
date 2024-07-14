@@ -1743,19 +1743,22 @@ namespace WowUnity
 
         public static AnimationClip CreateAnimationClip(M2Utility.TextureTransform textureTransformMetadata)
         {
-            AnimationClip newClip = new AnimationClip();
-            newClip.legacy = true;
-            newClip.wrapMode = WrapMode.Loop;
+            var newClip = new AnimationClip
+            {
+                legacy = true,
+                wrapMode = WrapMode.Loop
+            };
 
-            var curves = new List<AnimationCurve>(new AnimationCurve[] { new AnimationCurve(), new AnimationCurve(), new AnimationCurve() });
-            foreach (List<uint> timestamps in textureTransformMetadata.translation.timestamps) {
+            var curves = new List<AnimationCurve>(new AnimationCurve[] { new(), new(), new() });
+            foreach (var timestamps in textureTransformMetadata.translation.timestamps)
+            {
                 var values = textureTransformMetadata.translation.values[0];
-                
+
                 for (int i = 0; i < timestamps.Count; i++)
                 {
-                    curves[0].AddKey(timestamps[i]/1000f, values[i][0]);
-                    curves[1].AddKey(timestamps[i]/1000f, values[i][1] * -1);
-                    curves[2].AddKey(timestamps[i]/1000f, values[i][2]);
+                    curves[0].AddKey(timestamps[i] / 1000f, values[i][0]);
+                    curves[1].AddKey(timestamps[i] / 1000f, values[i][1] * -1);
+                    curves[2].AddKey(timestamps[i] / 1000f, values[i][2]);
                 }
             }
 
@@ -1767,14 +1770,14 @@ namespace WowUnity
 
         public static AnimationCurve LinearCurve(M2Utility.SingleValueAnimationInformation metadata)
         {
-            AnimationCurve newCurve = new AnimationCurve();
+            var newCurve = new AnimationCurve();
 
             return newCurve;
         }
 
         public static AnimationCurve[] LinearCurve(M2Utility.MultiValueAnimationInformation metadata)
         {
-            List<AnimationCurve> newCurves = new List<AnimationCurve>();
+            var newCurves = new List<AnimationCurve>();
 
             return newCurves.ToArray();
         }

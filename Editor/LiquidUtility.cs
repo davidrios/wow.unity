@@ -9,13 +9,13 @@ namespace WowUnity
 {
     public class LiquidUtility
     {
-        private static List<string> liquidMetadataPathQueue = new List<string>();
+        private static readonly List<string> liquidMetadataPathQueue = new List<string>();
 
         public static void PostProcessFluidVolumes()
         {
-            foreach(string path in liquidMetadataPathQueue)
+            foreach (string path in liquidMetadataPathQueue)
             {
-                LiquidMetadata metadata = ReadMetadataFor(path);
+                var metadata = ReadMetadataFor(path);
 
                 //Parse out the name of the ADT
                 //REGEX MAGIC HERE
@@ -24,10 +24,10 @@ namespace WowUnity
                 //GameObject adtPrefab = M2Utility.FindOrCreatePrefab();
 
                 //Loop through the liquid data
-                    //Create a mesh based on params
-                    //Based on defined offsets.
-                    //Apply y = height
-                
+                //Create a mesh based on params
+                //Based on defined offsets.
+                //Apply y = height
+
                 //Add mesh object to heirarchy
 
                 //Assign material??
@@ -43,12 +43,10 @@ namespace WowUnity
 
         public static LiquidMetadata ReadMetadataFor(string path)
         {
-            string pathToMetadata = Path.GetDirectoryName(path) + "/" + path;
+            var pathToMetadata = Path.GetDirectoryName(path) + "/" + path;
 
             if (!File.Exists(pathToMetadata))
-            {
                 return null;
-            }
 
             var sr = new StreamReader(Application.dataPath.Replace("Assets", "") + pathToMetadata);
             var fileContents = sr.ReadToEnd();
@@ -60,13 +58,13 @@ namespace WowUnity
 
     public class LiquidMetadata
     {
-        public List<LiquidChunk> liquidChunks = new List<LiquidChunk>();
+        public List<LiquidChunk> liquidChunks = new();
     }
 
     public class LiquidChunk
     {
         public Attributes attributes;
-        public List<Instance> instances = new List<Instance>();
+        public List<Instance> instances = new();
     }
 
     public struct Attributes
@@ -90,7 +88,7 @@ namespace WowUnity
 
     public class VertexData
     {
-        public List<float> height = new List<float>();
-        public List<short> depth = new List<short>();
+        public List<float> height = new();
+        public List<short> depth = new();
     }
 }

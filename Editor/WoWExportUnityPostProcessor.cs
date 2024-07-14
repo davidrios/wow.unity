@@ -33,14 +33,12 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
     public void OnPreprocessTexture()
     {
-        bool match = Regex.IsMatch(assetPath, @"tex_\d{2}_\d{2}_\d{1,3}(?=\.png)");
+        var match = Regex.IsMatch(assetPath, @"tex_\d{2}_\d{2}_\d{1,3}(?=\.png)");
 
         if (!match)
-        {
             return;
-        }
 
-        TextureImporter textureImporter = (TextureImporter)assetImporter;
+        var textureImporter = assetImporter as TextureImporter;
         textureImporter.textureType = TextureImporterType.Default;
         textureImporter.wrapMode = TextureWrapMode.Clamp;
         textureImporter.textureCompression = TextureImporterCompression.Uncompressed;
@@ -51,14 +49,13 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
     public void OnPreprocessModel()
     {
-        ModelImporter modelImporter = assetImporter as ModelImporter;
+        var modelImporter = assetImporter as ModelImporter;
 
         if (!ValidAsset(assetPath))
         {
             if (assetPath.EndsWith(".phys.obj"))
-            {
                 modelImporter.bakeAxisConversion = true;
-            }
+
             return;
         }
 
@@ -78,14 +75,12 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
     public void OnPostprocessModel(GameObject gameObject)
     {
         if (!ValidAsset(assetPath))
-        {
             return;
-        }
 
         if (ADTUtility.IsAdtObj(assetPath))
         {
-            MeshRenderer[] childRenderers = gameObject.GetComponentsInChildren<MeshRenderer>();
-            foreach (MeshRenderer child in childRenderers)
+            var childRenderers = gameObject.GetComponentsInChildren<MeshRenderer>();
+            foreach (var child in childRenderers)
             {
                 child.gameObject.AddComponent<MeshCollider>();
             }
@@ -108,9 +103,7 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
         {
             var processNow = EditorUtility.DisplayDialog("WoW assets imported", "There were WoW assets imported, they need to be processed to work properly. Do you want to process them now? They can also be processed later by opening menu bar Window > wow.unity and clicking Process under All Assets.", "Process now", "Do it later");
             if (processNow)
-            {
                 AssetConversionManager.JobPostprocessAllAssets();
-            }
         }
     }
 }

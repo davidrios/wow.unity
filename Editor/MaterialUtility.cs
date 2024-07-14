@@ -33,28 +33,29 @@ namespace WowUnity
             BlendAdd = 7
         }
 
-        public enum MaterialFor: short
+        public enum MaterialFor : short
         {
             M2 = 0,
             WMO = 1,
         }
 
-        public static Material GetMaterial(M2Utility.Texture texture, MaterialFor materialFor, short flags, uint blendingMode, int shader, Color materialColor) {
+        public static Material GetMaterial(M2Utility.Texture texture, MaterialFor materialFor, short flags, uint blendingMode, int shader, Color materialColor)
+        {
             var colorName = materialColor == Color.white ? "W" : ColorUtility.ToHtmlStringRGBA(materialColor);
             var matName = $"{Path.GetFileNameWithoutExtension(texture.fileNameExternal)}_TF{texture.flag}_F{flags:X}_B{blendingMode:X}_S{shader:X}_C{colorName}";
             var assetMatPath = Path.Join(Path.GetDirectoryName(texture.assetPath), $"{matName}.mat");
 
             var material = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
-            if (material != null) {
+            if (material != null)
                 return material;
-            }
 
             Debug.Log($"{matName}: material does not exist, creating.");
 
             material = new Material(Shader.Find(LIT_SHADER));
             material.SetFloat("_WorkflowMode", 0);
             material.SetFloat("_Smoothness", 0);
-            if (shader == 1) {
+            if (shader == 1)
+            {
                 material.SetFloat("_Smoothness", 1);
                 material.SetFloat("_SmoothnessTextureChannel", 1);
             }
@@ -66,7 +67,7 @@ namespace WowUnity
                 material.SetFloat("_Cull", 0);
             }
 
-            Texture assetTexture = AssetDatabase.LoadAssetAtPath<Texture>(texture.assetPath);
+            var assetTexture = AssetDatabase.LoadAssetAtPath<Texture>(texture.assetPath);
             material.SetTexture("_BaseMap", assetTexture);
             material.SetColor("_BaseColor", materialColor);
 
@@ -119,10 +120,11 @@ namespace WowUnity
 
         public static Dictionary<uint, (Material, bool)> GetSkinMaterials(M2Utility.M2 metadata)
         {
-            Dictionary<uint, (Material, bool)> mats = new();
+            var mats = new Dictionary<uint, (Material, bool)>();
             var isBirp = Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP;
 
-            foreach (var textureUnit in metadata.skin.textureUnits) {
+            foreach (var textureUnit in metadata.skin.textureUnits)
+            {
                 var texture = metadata.textures[metadata.textureCombos[checked((int)textureUnit.textureComboIndex)]];
                 var unitMat = metadata.materials[checked((int)textureUnit.materialIndex)];
 
@@ -146,12 +148,14 @@ namespace WowUnity
 
         public static Dictionary<string, Material> GetWMOMaterials(WMOUtility.WMO metadata)
         {
-            Dictionary<string, Material> mats = new();
+            var mats = new Dictionary<string, Material>();
             var isBirp = Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP;
             var texturesById = metadata.textures.ToDictionary((item) => item.fileDataID);
 
-            foreach (var group in metadata.groups) {
-                for (var batchIdx = 0; batchIdx < group.renderBatches.Count; batchIdx++) {
+            foreach (var group in metadata.groups)
+            {
+                for (var batchIdx = 0; batchIdx < group.renderBatches.Count; batchIdx++)
+                {
                     var batch = group.renderBatches[batchIdx];
                     var batchMat = metadata.materials[checked((int)batch.materialID)];
                     var texture = texturesById[batchMat.texture1];
@@ -179,16 +183,13 @@ namespace WowUnity
         {
             var matDir = Path.Join(dirName, "terrain_materials");
             if (!Directory.Exists(matDir))
-            {
                 Directory.CreateDirectory(matDir);
-            }
+
             var assetMatPath = Path.Join(matDir, $"tex_{chunkName}.mat");
 
             var assetMat = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
             if (assetMat != null)
-            {
                 return assetMat;
-            }
 
             Debug.Log($"{assetMatPath}: material does not exist, creating.");
 
@@ -198,7 +199,7 @@ namespace WowUnity
             assetMat = new Material(Shader.Find(ADT_CHUNK_SHADER));
             assetMat.SetTexture("_BaseMap", mask);
 
-            Vector4 scaleVector = new Vector4();
+            var scaleVector = new Vector4();
             ADTUtility.Layer currentLayer;
             for (int i = 0; i < metadata.layers.Count; i++)
             {

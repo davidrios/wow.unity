@@ -35,15 +35,11 @@ public class WoWUnityWindow : EditorWindow
         foreach (var obj in Selection.objects)
         {
             if (obj.GetType() != typeof(GameObject))
-            {
                 continue;
-            }
 
             string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(obj);
             if (!ADTUtility.IsAdtAny(path))
-            {
                 continue;
-            }
 
             selectedAssets[obj.name] = obj as GameObject;
         }
@@ -77,9 +73,7 @@ public class WoWUnityWindow : EditorWindow
 
         GUILayout.Label("All Assets", EditorStyles.boldLabel);
         if (GUILayout.Button($"Process ({settings.renderingPipeline})"))
-        {
             ProcessAssets();
-        }
 
         GUILayout.Space(10);
 
@@ -88,7 +82,8 @@ public class WoWUnityWindow : EditorWindow
         if (selectedAssets == null || selectedAssets.Count == 0)
         {
             GUILayout.Label("No tiles selected. Select some in the project window.");
-        } else
+        }
+        else
         {
             GUILayout.Label("Selected tiles:");
 
@@ -103,17 +98,16 @@ public class WoWUnityWindow : EditorWindow
             {
 
                 if (GUILayout.Button($"Setup Terrain ({settings.renderingPipeline})"))
-                {
                     SetupTerrain();
-                }
 
                 if (GUILayout.Button("Place Doodads"))
-                {
                     PlaceDoodads();
-                }
-            } catch (System.Exception) {
+            }
+            catch (System.Exception)
+            {
                 throw;
-            } finally
+            }
+            finally
             {
                 GUILayout.EndHorizontal();
             }
@@ -144,14 +138,10 @@ public class WoWUnityWindow : EditorWindow
                 {
 
                     if (GUILayout.Button("Place M2s"))
-                    {
                         PlaceM2OnSelected();
-                    }
 
                     if (GUILayout.Button("Place WMOs"))
-                    {
                         PlaceWMOOnSelected();
-                    }
                 }
                 catch (System.Exception)
                 {
@@ -179,17 +169,16 @@ public class WoWUnityWindow : EditorWindow
         AssetConversionManager.JobPostprocessAllAssets();
     }
 
-    List<string> GetRootAdtPaths() {
-        List<string> paths = new();
-        HashSet<string> pathsH = new();
+    List<string> GetRootAdtPaths()
+    {
+        var paths = new List<string>();
+        var pathsH = new HashSet<string>();
 
         foreach (var selectedAsset in selectedAssets.Values)
         {
-            string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selectedAsset);
+            var path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selectedAsset);
             if (pathsH.Contains(path))
-            {
                 continue;
-            }
 
             pathsH.Add(path);
             paths.Add(path);
@@ -211,9 +200,9 @@ public class WoWUnityWindow : EditorWindow
 
         foreach (var path in GetRootAdtPaths())
         {
-            GameObject prefab = M2Utility.FindPrefab(Path.ChangeExtension(path, "prefab"));
+            var prefab = M2Utility.FindPrefab(Path.ChangeExtension(path, "prefab"));
 
-            TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(Path.ChangeExtension(path, "obj").Replace(".obj", "_ModelPlacementInformation.csv"));
+            var placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(Path.ChangeExtension(path, "obj").Replace(".obj", "_ModelPlacementInformation.csv"));
             if (placementData == null)
             {
                 Debug.LogWarning($"{path}: ModelPlacementInformation.csv not found.");
@@ -227,11 +216,13 @@ public class WoWUnityWindow : EditorWindow
         Debug.Log("Done placing doodads.");
     }
 
-    void PlaceM2OnSelected() {
+    void PlaceM2OnSelected()
+    {
         ItemCollectionUtility.ParseFileAndSpawnDoodads(selectedForDoodads.transform, modelPlacementInfo, "m2");
     }
 
-    void PlaceWMOOnSelected() {
+    void PlaceWMOOnSelected()
+    {
         ItemCollectionUtility.ParseFileAndSpawnDoodads(selectedForDoodads.transform, modelPlacementInfo, "wmo");
     }
 

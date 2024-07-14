@@ -27,9 +27,7 @@ namespace WowUnity
 
             var settingsDir = Path.GetDirectoryName(SettingsPath);
             if (!Directory.Exists(settingsDir))
-            {
                 Directory.CreateDirectory(settingsDir);
-            }
 
             instance = CreateInstance<Settings>();
             AssetDatabase.CreateAsset(instance, SettingsPath);

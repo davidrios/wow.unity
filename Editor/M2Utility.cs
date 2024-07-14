@@ -15,14 +15,11 @@ namespace WowUnity
         public static void PostProcessImport(string path, string jsonData)
         {
             var metadata = JsonConvert.DeserializeObject<M2>(jsonData);
-            if (metadata.fileType != "m2") {
+            if (metadata.fileType != "m2")
                 return;
-            }
 
             if (FindPrefab(path) != null)
-            {
                 return;
-            }
 
             Debug.Log($"{path}: processing m2");
 
@@ -55,10 +52,10 @@ namespace WowUnity
 
             if (metadata.textureTransforms.Count > 0 && metadata.textureTransforms[0].translation.timestamps.Count > 0)
             {
-                for (int i = 0; i < metadata.textureTransforms.Count; i++)
+                for (var i = 0; i < metadata.textureTransforms.Count; i++)
                 {
-                    AnimationClip newClip = AnimationUtility.CreateAnimationClip(metadata.textureTransforms[i]);
-                    AssetDatabase.CreateAsset(newClip, Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + "[" + i +  "]" + ".anim");
+                    var newClip = AnimationUtility.CreateAnimationClip(metadata.textureTransforms[i]);
+                    AssetDatabase.CreateAsset(newClip, Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + "[" + i + "]" + ".anim");
                 }
             }
         }
@@ -114,7 +111,7 @@ namespace WowUnity
         {
             var texturesByRenderer = gameObject.GetComponentsInChildren<Renderer>()
                 .Select((item) => (item.name, item.sharedMaterial))
-                .ToDictionary((item) => item.Item1, (item) => item.Item2);
+                .ToDictionary((item) => item.name, (item) => item.sharedMaterial);
 
             var invPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(invPath);
             var renderers = invPrefab.GetComponentsInChildren<Renderer>();
@@ -134,26 +131,24 @@ namespace WowUnity
 
         public static GameObject FindOrCreatePrefab(string path)
         {
-            GameObject existingPrefab = FindPrefab(path);
+            var existingPrefab = FindPrefab(path);
 
             if (existingPrefab == null)
-            {
                 return GeneratePrefab(path);
-            }
 
             return existingPrefab;
         }
 
         public static GameObject FindPrefab(string path)
         {
-            string prefabPath = Path.ChangeExtension(path, "prefab");
+            var prefabPath = Path.ChangeExtension(path, "prefab");
             return AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         }
 
         public static GameObject GeneratePrefab(string path)
         {
-            string prefabPath = Path.ChangeExtension(path, "prefab");
-            GameObject importedModelObject = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var prefabPath = Path.ChangeExtension(path, "prefab");
+            var importedModelObject = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
             if (importedModelObject == null)
             {
@@ -162,7 +157,7 @@ namespace WowUnity
             }
 
             var rootObj = new GameObject() { isStatic = true };
-            GameObject rootModelInstance = PrefabUtility.InstantiatePrefab(importedModelObject, rootObj.transform) as GameObject;
+            var rootModelInstance = PrefabUtility.InstantiatePrefab(importedModelObject, rootObj.transform) as GameObject;
 
             //Set the object as static, and all it's child objects
             rootModelInstance.isStatic = true;
@@ -171,17 +166,19 @@ namespace WowUnity
                 childTransform.gameObject.isStatic = true;
             }
 
-            GameObject newPrefab = PrefabUtility.SaveAsPrefabAssetAndConnect(rootObj, prefabPath, InteractionMode.AutomatedAction);
+            var newPrefab = PrefabUtility.SaveAsPrefabAssetAndConnect(rootObj, prefabPath, InteractionMode.AutomatedAction);
             AssetDatabase.Refresh();
             UnityEngine.Object.DestroyImmediate(rootObj);
 
             return newPrefab;
         }
 
-        public static void ProcessTextures(List<Texture> textures, string dirName) {
-            string mainDataPath = Application.dataPath.Replace("Assets", "");
+        public static void ProcessTextures(List<Texture> textures, string dirName)
+        {
+            var mainDataPath = Application.dataPath.Replace("Assets", "");
 
-            for (var idx = 0; idx < textures.Count; idx++) {
+            for (var idx = 0; idx < textures.Count; idx++)
+            {
                 var texture = textures[idx];
                 texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.fileNameExternal)));
                 textures[idx] = texture;
@@ -229,20 +226,20 @@ namespace WowUnity
             public string fileName;
             public string internalName;
             public Skin skin;
-            public List<Texture> textures = new List<Texture>();
-            public List<short> textureTypes = new List<short>();
-            public List<Material> materials = new List<Material>();
-            public List<short> textureCombos = new List<short>();
-            public List<ColorData> colors = new List<ColorData>();
-            public List<TextureTransform> textureTransforms = new List<TextureTransform>();
-            public List<uint> textureTransformsLookup = new List<uint>();
+            public List<Texture> textures = new();
+            public List<short> textureTypes = new();
+            public List<Material> materials = new();
+            public List<short> textureCombos = new();
+            public List<ColorData> colors = new();
+            public List<TextureTransform> textureTransforms = new();
+            public List<uint> textureTransformsLookup = new();
         }
 
         [Serializable]
         public class Skin
         {
-            public List<SubMesh> subMeshes = new List<SubMesh>();
-            public List<TextureUnit> textureUnits = new List<TextureUnit>();
+            public List<SubMesh> subMeshes = new();
+            public List<TextureUnit> textureUnits = new();
         }
 
         [Serializable]

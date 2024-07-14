@@ -11,7 +11,8 @@ namespace WowUnity
         public const string UNLIT_SHADER = "Particles/Standard Unlit";
         public const string ADT_CHUNK_SHADER = "wow.unity/BirpTerrainShader";
 
-        public static Material GetMaterial(M2Utility.Texture texture, MaterialUtility.MaterialFor materialFor, short flags, uint blendingMode, int shader, Color materialColor) {
+        public static Material GetMaterial(M2Utility.Texture texture, MaterialUtility.MaterialFor materialFor, short flags, uint blendingMode, int shader, Color materialColor)
+        {
             var colorName = materialColor == Color.white ? "W" : ColorUtility.ToHtmlStringRGBA(materialColor);
             var matName = $"{Path.GetFileNameWithoutExtension(texture.fileNameExternal)}_TF{texture.flag}_F{flags:X}_B{blendingMode:X}_S{shader:X}_C{colorName}";
             var assetMatPath = Path.Join(Path.GetDirectoryName(texture.assetPath), $"{matName}.mat");
@@ -37,15 +38,13 @@ namespace WowUnity
                 material.SetFloat("_Cull", 0);
             }
 
-            Texture assetTexture = AssetDatabase.LoadAssetAtPath<Texture>(texture.assetPath);
+            var assetTexture = AssetDatabase.LoadAssetAtPath<Texture>(texture.assetPath);
             material.SetTexture("_MainTex", assetTexture);
             material.SetColor("_Color", materialColor);
 
             //Now blend modes
             if (blendingMode == (short)MaterialUtility.BlendModes.AlphaKey)
-            {
                 material.SetFloat("_Mode", 1);
-            }
 
             if (blendingMode == (short)MaterialUtility.BlendModes.Alpha)
             {
@@ -86,13 +85,13 @@ namespace WowUnity
             var matDir = Path.Join(dirName, "terrain_materials");
             if (!Directory.Exists(matDir))
                 Directory.CreateDirectory(matDir);
-            
+
             var assetMatPath = Path.Join(matDir, $"tex_{sectionName}.mat");
 
             var assetMat = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
             if (assetMat != null)
                 return assetMat;
-            
+
             Debug.Log($"{assetMatPath}: material does not exist, creating.");
 
             var textures = metadata.layers.Select((item) => AssetDatabase.LoadAssetAtPath<Texture>(item.assetPath)).ToList();

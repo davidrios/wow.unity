@@ -31,12 +31,10 @@ namespace WowUnity
                 foreach (var path in paths)
                 {
                     if (M2Utility.FindPrefab(path) != null)
-                    {
                         continue;
-                    }
 
                     var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                    Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
+                    var renderers = imported.GetComponentsInChildren<Renderer>();
                     total += renderers.Count() + 1;
                 }
 
@@ -44,24 +42,20 @@ namespace WowUnity
                 foreach (var path in paths)
                 {
                     if (M2Utility.FindPrefab(path) != null)
-                    {
                         continue;
-                    }
 
                     var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
                     var dirName = Path.GetDirectoryName(path);
 
-                    Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
+                    var renderers = imported.GetComponentsInChildren<Renderer>();
 
                     foreach (var renderer in renderers)
                     {
                         var pathToMetadata = $"{dirName}/tex_{renderer.name}.json";
 
                         if (EditorUtility.DisplayCancelableProgressBar("Creating terrain materials.", pathToMetadata, itemsProcessed / total))
-                        {
                             return;
-                        }
 
                         var sr = new StreamReader(mainDataPath + pathToMetadata);
                         var jsonData = sr.ReadToEnd();
@@ -69,9 +63,7 @@ namespace WowUnity
 
                         var metadata = JsonConvert.DeserializeObject<Tex>(jsonData);
                         if (metadata.layers.Count == 0)
-                        {
                             continue;
-                        }
 
                         for (var idx = 0; idx < metadata.layers.Count; idx++)
                         {
@@ -104,7 +96,8 @@ namespace WowUnity
                     M2Utility.FindOrCreatePrefab(path);
                     itemsProcessed++;
                 }
-            } finally
+            }
+            finally
             {
                 EditorUtility.ClearProgressBar();
             }

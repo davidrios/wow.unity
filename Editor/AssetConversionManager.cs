@@ -33,8 +33,8 @@ namespace WowUnity
         public static string ReadAssetJson(string path)
         {
             var dirName = Path.GetDirectoryName(path);
-            string pathToMetadata = dirName + "/" + Path.GetFileNameWithoutExtension(path) + ".json";
-            string mainDataPath = Application.dataPath.Replace("Assets", "");
+            var pathToMetadata = dirName + "/" + Path.GetFileNameWithoutExtension(path) + ".json";
+            var mainDataPath = Application.dataPath.Replace("Assets", "");
 
             var sr = new StreamReader(mainDataPath + pathToMetadata);
             var jsonData = sr.ReadToEnd();
@@ -106,11 +106,9 @@ namespace WowUnity
 
                 WMOUtility.PostProcessImport(path, ReadAssetJson(path));
 
-                TextAsset placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(path.Replace(".obj", "_ModelPlacementInformation.csv"));
+                var placementData = AssetDatabase.LoadAssetAtPath<TextAsset>(path.Replace(".obj", "_ModelPlacementInformation.csv"));
                 if (placementData != null)
-                {
                     hasPlacement.Add((path, placementData));
-                }
 
                 itemsProcessed++;
             }
@@ -151,14 +149,14 @@ namespace WowUnity
             var prefab = M2Utility.FindPrefab(path);
             GameObject prefabInst;
 
-            GameObject physicsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(path.Replace(".obj", ".phys.obj"));
+            var physicsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(path.Replace(".obj", ".phys.obj"));
             if (physicsPrefab == null)
             {
                 if (useMesh)
                 {
                     prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-                    MeshRenderer[] childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
-                    foreach (MeshRenderer child in childRenderers)
+                    var childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
+                    foreach (var child in childRenderers)
                     {
                         child.gameObject.AddComponent<MeshCollider>();
                     }
@@ -171,15 +169,11 @@ namespace WowUnity
             }
 
             if (prefab.transform.Find("Collision") != null)
-            {
                 return;
-            }
 
             var collisionMesh = physicsPrefab.GetComponentInChildren<MeshFilter>();
             if (collisionMesh == null)
-            {
                 return;
-            }
 
             prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
             prefabInst.GetComponentsInChildren<MeshCollider>().ToList().ForEach(collider => Object.DestroyImmediate(collider));
@@ -187,7 +181,7 @@ namespace WowUnity
             var collider = new GameObject() { isStatic = true };
             collider.transform.SetParent(prefabInst.transform);
             collider.name = "Collision";
-            MeshCollider parentCollider = collider.AddComponent<MeshCollider>();
+            var parentCollider = collider.AddComponent<MeshCollider>();
             parentCollider.sharedMesh = collisionMesh.sharedMesh;
             PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
             PrefabUtility.SavePrefabAsset(prefab);
@@ -221,13 +215,11 @@ namespace WowUnity
             EditorUtility.DisplayProgressBar("Postprocessing WoW assets", "Looking for assets.", 0);
             try
             {
-                string[] allAssets = AssetDatabase.GetAllAssetPaths();
-                foreach (string path in allAssets)
+                var allAssets = AssetDatabase.GetAllAssetPaths();
+                foreach (var path in allAssets)
                 {
                     if (WoWExportUnityPostprocessor.ValidAsset(path) && !ADTUtility.IsAdtObj(path) && !path.EndsWith(M2Utility.DOUBLE_SIDED_INVERSE_SUFFIX))
-                    {
                         QueuePostprocess(path);
-                    }
                 }
             }
             finally
