@@ -7,7 +7,7 @@ using WowUnity;
 
 public class WoWUnityWindow : EditorWindow
 {
-    private Dictionary<string, GameObject> selectedAssets;
+    private Dictionary<string, GameObject> selectedMapTiles;
     private GameObject selectedForDoodads;
     private TextAsset modelPlacementInfo;
 
@@ -31,7 +31,7 @@ public class WoWUnityWindow : EditorWindow
 
     void OnSelectionChangeForMap()
     {
-        selectedAssets = new();
+        selectedMapTiles = new();
         foreach (var obj in Selection.objects)
         {
             if (obj.GetType() != typeof(GameObject))
@@ -41,7 +41,7 @@ public class WoWUnityWindow : EditorWindow
             if (!ADTUtility.IsAdtAny(path))
                 continue;
 
-            selectedAssets[obj.name] = obj as GameObject;
+            selectedMapTiles[obj.name] = obj as GameObject;
         }
         Repaint();
     }
@@ -62,11 +62,27 @@ public class WoWUnityWindow : EditorWindow
         var settings = Settings.GetSettings();
 
         GUILayout.Label("Settings", EditorStyles.boldLabel);
-        if (GUILayout.Button("Open Settings"))
+        GUILayout.BeginHorizontal();
+        try
         {
-            Selection.activeObject = settings;
-            EditorGUIUtility.PingObject(settings);
-            EditorApplication.ExecuteMenuItem("Window/General/Inspector");
+            if (GUILayout.Button("Open Editor Settings"))
+            {
+                Selection.activeObject = settings;
+                EditorGUIUtility.PingObject(settings);
+                EditorApplication.ExecuteMenuItem("Window/General/Inspector");
+            }
+
+            if (GUILayout.Button("Open Runtime Settings"))
+            {
+                var rsettings = RuntimeSettings.GetSettings();
+                Selection.activeObject = rsettings;
+                EditorGUIUtility.PingObject(rsettings);
+                EditorApplication.ExecuteMenuItem("Window/General/Inspector");
+            }
+        }
+        finally
+        {
+            GUILayout.EndHorizontal();
         }
 
         GUILayout.Space(10);
@@ -79,7 +95,7 @@ public class WoWUnityWindow : EditorWindow
 
         GUILayout.Label("Map", EditorStyles.boldLabel);
 
-        if (selectedAssets == null || selectedAssets.Count == 0)
+        if (selectedMapTiles == null || selectedMapTiles.Count == 0)
         {
             GUILayout.Label("No tiles selected. Select some in the project window.");
         }
@@ -87,7 +103,7 @@ public class WoWUnityWindow : EditorWindow
         {
             GUILayout.Label("Selected tiles:");
 
-            foreach (var asset in selectedAssets.Values)
+            foreach (var asset in selectedMapTiles.Values)
             {
                 EditorGUILayout.ObjectField(asset, typeof(GameObject), false);
             }
@@ -96,16 +112,23 @@ public class WoWUnityWindow : EditorWindow
 
             try
             {
-
                 if (GUILayout.Button($"Setup Terrain ({settings.renderingPipeline})"))
                     SetupTerrain();
 
                 if (GUILayout.Button("Place Doodads"))
                     PlaceDoodads();
             }
-            catch (System.Exception)
+            finally
             {
-                throw;
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.BeginHorizontal();
+
+            try
+            {
+                if (GUILayout.Button("Place Foliage"))
+                    PlaceFoliage(Settings.GetSettings().foliageDensityFactor);
             }
             finally
             {
@@ -143,10 +166,6 @@ public class WoWUnityWindow : EditorWindow
                     if (GUILayout.Button("Place WMOs"))
                         PlaceWMOOnSelected();
                 }
-                catch (System.Exception)
-                {
-                    throw;
-                }
                 finally
                 {
                     GUILayout.EndHorizontal();
@@ -174,7 +193,7 @@ public class WoWUnityWindow : EditorWindow
         var paths = new List<string>();
         var pathsH = new HashSet<string>();
 
-        foreach (var selectedAsset in selectedAssets.Values)
+        foreach (var selectedAsset in selectedMapTiles.Values)
         {
             var path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(selectedAsset);
             if (pathsH.Contains(path))
@@ -214,6 +233,36 @@ public class WoWUnityWindow : EditorWindow
         }
 
         Debug.Log("Done placing doodads.");
+    }
+
+    public void PlaceFoliage(float foliageDensity)
+    {
+        SetupTerrain();
+        AssetConversionManager.JobPostprocessAllAssets();
+
+        foreach (var selectedAsset in selectedMapTiles.Values)
+        {
+            if (selectedAsset.name.StartsWith("adt_"))
+            {
+                var adtRoot = selectedAsset.transform;
+
+                var parentTransform = selectedAsset.transform.parent;
+                if (parentTransform.name == adtRoot.name)
+                    adtRoot = parentTransform;
+
+                var sectionsContainer = adtRoot.Find(adtRoot.name);
+                for (var i = 0; i < sectionsContainer.childCount; i++)
+                {
+                    ADTUtility.PlaceChunkFoliage(adtRoot, sectionsContainer.GetChild(i).gameObject, foliageDensity);
+                }
+            }
+            else
+            {
+                var adtRoot = selectedAsset.transform.parent.parent;
+                ADTUtility.PlaceChunkFoliage(adtRoot, selectedAsset, foliageDensity);
+            }
+
+        }
     }
 
     void PlaceM2OnSelected()
