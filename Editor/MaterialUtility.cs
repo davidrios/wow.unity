@@ -127,7 +127,6 @@ namespace WowUnity
                 var unitMat = metadata.materials[checked((int)textureUnit.materialIndex)];
 
                 var materialColor = Color.white;
-                Debug.Log($"color: {textureUnit.colorIndex}, {textureUnit.colorIndex != 0xffff}");
                 if (textureUnit.colorIndex < 0xffff)
                 {
                     var colorValue = metadata.colors[(int)textureUnit.colorIndex].color.values[0][0];

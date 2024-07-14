@@ -12,16 +12,17 @@ namespace WowUnity
         private static readonly ConcurrentQueue<string> importedModelPathQueue = new();
         private static readonly ConcurrentQueue<string> importedWMOPathQueue = new();
         private static readonly ConcurrentQueue<string> physicsQueue = new();
+        private static readonly ConcurrentQueue<(string, List<string>)> doubleSidedCreationQueue = new();
         private static bool isBusy = false;
+
+        public static void QueueCreateDoublesided((string, List<string>) item)
+        {
+            doubleSidedCreationQueue.Enqueue(item);
+        }
 
         public static void QueuePostprocess(string filePath)
         {
             importedModelPathQueue.Enqueue(filePath);
-        }
-
-        public static bool HasQueue()
-        {
-            return importedModelPathQueue.Count + importedWMOPathQueue.Count + physicsQueue.Count > 0;
         }
 
         public static bool IsBusy()
@@ -47,13 +48,16 @@ namespace WowUnity
             var itemsToProcess = importedModelPathQueue.Count;
             var itemsProcessed = 0f;
 
-            List<(string, TextAsset)> hasPlacement = new();
+            var hasPlacement = new List<(string, TextAsset)>();
 
             AssetDatabase.StartAssetEditing();
             try
             {
                 while (importedModelPathQueue.TryDequeue(out string path))
                 {
+                    if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW assets", path, itemsProcessed / itemsToProcess))
+                        return;
+
                     Debug.Log($"{path}: postprocessing");
 
                     var jsonData = ReadAssetJson(path);
@@ -63,11 +67,6 @@ namespace WowUnity
                         // process this separately because of StartAssetEditing issues
                         importedWMOPathQueue.Enqueue(path);
                         continue;
-                    }
-
-                    if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW assets", path, itemsProcessed / itemsToProcess))
-                    {
-                        return;
                     }
 
                     if (M2Utility.FindPrefab(path) == null)
@@ -87,14 +86,23 @@ namespace WowUnity
                 AssetDatabase.SaveAssets();
             }
 
+            itemsToProcess = doubleSidedCreationQueue.Count;
+            itemsProcessed = 0f;
+            while (doubleSidedCreationQueue.TryDequeue(out (string, List<string>) item))
+            {
+                if (EditorUtility.DisplayCancelableProgressBar("Creating double sided", item.Item1, itemsProcessed / itemsToProcess))
+                    return;
+
+                M2Utility.ProcessDoubleSided(item.Item1, item.Item2);
+                itemsProcessed++;
+            }
+
             while (importedWMOPathQueue.TryDequeue(out string path))
             {
                 Debug.Log($"{path}: postprocessing");
 
                 if (EditorUtility.DisplayCancelableProgressBar("Postprocessing WoW WMOs", path, itemsProcessed / itemsToProcess))
-                {
                     return;
-                }
 
                 WMOUtility.PostProcessImport(path, ReadAssetJson(path));
 
@@ -117,9 +125,7 @@ namespace WowUnity
                 Debug.Log($"{path}: setup physics");
 
                 if (EditorUtility.DisplayCancelableProgressBar("Setting up physics", path, itemsProcessed / itemsToProcess))
-                {
                     return;
-                }
 
                 SetupPhysics(path, createCollisionForAllM2);
 
@@ -132,9 +138,8 @@ namespace WowUnity
             foreach (var (path, placementData) in hasPlacement)
             {
                 if (EditorUtility.DisplayCancelableProgressBar("Placing doodads", path, itemsProcessed / itemsToProcess))
-                {
                     return;
-                }
+
                 Debug.Log($"{path}: placing models");
                 ItemCollectionUtility.PlaceModels(M2Utility.FindPrefab(path), placementData);
                 itemsProcessed++;
@@ -179,7 +184,7 @@ namespace WowUnity
             prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
             prefabInst.GetComponentsInChildren<MeshCollider>().ToList().ForEach(collider => Object.DestroyImmediate(collider));
 
-            GameObject collider = new();
+            var collider = new GameObject() { isStatic = true };
             collider.transform.SetParent(prefabInst.transform);
             collider.name = "Collision";
             MeshCollider parentCollider = collider.AddComponent<MeshCollider>();
@@ -190,13 +195,8 @@ namespace WowUnity
             Object.DestroyImmediate(prefabInst);
         }
 
-        public static void PostProcessImports()
+        private static void PostProcessImports()
         {
-            if (importedModelPathQueue.Count + importedWMOPathQueue.Count + physicsQueue.Count == 0)
-            {
-                return;
-            }
-
             isBusy = true;
 
             try
@@ -224,7 +224,7 @@ namespace WowUnity
                 string[] allAssets = AssetDatabase.GetAllAssetPaths();
                 foreach (string path in allAssets)
                 {
-                    if (WoWExportUnityPostprocessor.ValidAsset(path) && !ADTUtility.IsAdtObj(path))
+                    if (WoWExportUnityPostprocessor.ValidAsset(path) && !ADTUtility.IsAdtObj(path) && !path.EndsWith(M2Utility.DOUBLE_SIDED_INVERSE_SUFFIX))
                     {
                         QueuePostprocess(path);
                     }

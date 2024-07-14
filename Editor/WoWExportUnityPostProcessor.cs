@@ -3,6 +3,7 @@ using UnityEngine;
 using System.IO;
 using System.Text.RegularExpressions;
 using WowUnity;
+using System.Threading;
 
 public class WoWExportUnityPostprocessor : AssetPostprocessor
 {
@@ -25,7 +26,8 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
 
         return (
             File.Exists(Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + ".json") ||
-            ADTUtility.IsAdtObj(path)
+            ADTUtility.IsAdtObj(path) ||
+            path.EndsWith(M2Utility.DOUBLE_SIDED_INVERSE_SUFFIX)
         );
     }
 
@@ -60,9 +62,11 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
             return;
         }
 
-        Debug.Log($"{assetPath}: processing wow model");
+        Debug.Log($"{assetPath}: onpreprocess wow model");
 
-        modelImporter.bakeAxisConversion = true;
+        if (!assetPath.EndsWith(M2Utility.DOUBLE_SIDED_INVERSE_SUFFIX))
+            modelImporter.bakeAxisConversion = true;
+
         modelImporter.generateSecondaryUV = true;
         modelImporter.secondaryUVMarginMethod = ModelImporterSecondaryUVMarginMethod.Calculate;
         modelImporter.secondaryUVMinLightmapResolution = 16;
@@ -93,7 +97,7 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
         var hasWow = false;
         foreach (string path in importedAssets)
         {
-            if (ValidAsset(path))
+            if (ValidAsset(path) && !path.EndsWith(M2Utility.DOUBLE_SIDED_INVERSE_SUFFIX))
             {
                 AssetConversionManager.QueuePostprocess(path);
                 hasWow = true;

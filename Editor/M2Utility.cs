@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,6 +10,8 @@ namespace WowUnity
 {
     class M2Utility
     {
+        public const string DOUBLE_SIDED_INVERSE_SUFFIX = "__dsinv.obj";
+
         public static void PostProcessImport(string path, string jsonData)
         {
             var metadata = JsonConvert.DeserializeObject<M2>(jsonData);
@@ -16,20 +19,21 @@ namespace WowUnity
                 return;
             }
 
-            Debug.Log($"{path}: processing m2");
-
             if (FindPrefab(path) != null)
             {
                 return;
             }
 
+            Debug.Log($"{path}: processing m2");
+
             ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
             var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-
-            Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
-
+            var renderers = imported.GetComponentsInChildren<Renderer>();
             var skinMaterials = MaterialUtility.GetSkinMaterials(metadata);
+
+            var isDoubleSided = false;
+            var nonDoubleSided = new List<string>();
 
             // Configure materials
             for (uint rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
@@ -37,10 +41,17 @@ namespace WowUnity
                 var renderer = renderers[rendererIndex];
                 var (material, isMatDoubleSided) = skinMaterials[rendererIndex];
                 renderer.material = material;
+
+                isDoubleSided = isDoubleSided || isMatDoubleSided;
+                if (!isMatDoubleSided)
+                    nonDoubleSided.Add(renderer.name);
             }
             AssetDatabase.Refresh();
 
             GeneratePrefab(path);
+
+            if (isDoubleSided && Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP)
+                AssetConversionManager.QueueCreateDoublesided((path, nonDoubleSided));
 
             if (metadata.textureTransforms.Count > 0 && metadata.textureTransforms[0].translation.timestamps.Count > 0)
             {
@@ -50,6 +61,68 @@ namespace WowUnity
                     AssetDatabase.CreateAsset(newClip, Path.GetDirectoryName(path) + "/" + Path.GetFileNameWithoutExtension(path) + "[" + i +  "]" + ".anim");
                 }
             }
+        }
+
+        public static void ProcessDoubleSided(string origPath, List<string> nonDoubleSided)
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<GameObject>(origPath);
+            var dinst = PrefabUtility.InstantiatePrefab(asset) as GameObject;
+            foreach (var name in nonDoubleSided)
+            {
+                var nonDouble = dinst.transform.Find(name);
+                if (nonDouble != null)
+                    UnityEngine.Object.DestroyImmediate(nonDouble.gameObject);
+            }
+
+            foreach (var meshFilter in dinst.GetComponentsInChildren<MeshFilter>())
+            {
+                meshFilter.sharedMesh = DuplicateAndReverseMesh(meshFilter.sharedMesh);
+            }
+
+            var invPath = origPath.Replace(".obj", DOUBLE_SIDED_INVERSE_SUFFIX);
+            ObjExporter.ExportObj(dinst, invPath);
+            UnityEngine.Object.DestroyImmediate(dinst);
+
+            AssetDatabase.ImportAsset(invPath);
+
+            var origPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(invPath.Replace(DOUBLE_SIDED_INVERSE_SUFFIX, ".prefab"));
+            if (origPrefab == null)
+            {
+                Debug.LogWarning($"{invPath}: could not find original prefab");
+                return;
+            }
+
+            var origPrefabInst = PrefabUtility.InstantiatePrefab(origPrefab) as GameObject;
+
+            if (origPrefabInst.transform.Find(Path.GetFileNameWithoutExtension(invPath)) != null)
+            {
+                UnityEngine.Object.DestroyImmediate(origPrefabInst);
+                return;
+            }
+
+            var texturesByRenderer = origPrefabInst.GetComponentsInChildren<Renderer>()
+                .Select((item) => (item.name, item.sharedMaterial))
+                .ToDictionary((item) => item.Item1, (item) => item.Item2);
+
+            var invPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(invPath);
+            var renderers = invPrefab.GetComponentsInChildren<Renderer>();
+            for (var idx = 0; idx < renderers.Length; idx++)
+            {
+                renderers[idx].sharedMaterial = texturesByRenderer[renderers[idx].name];
+            }
+            var invPrefabInst = PrefabUtility.InstantiatePrefab(invPrefab, origPrefabInst.transform) as GameObject;
+            invPrefabInst.isStatic = true;
+            foreach (Transform childTransform in invPrefabInst.transform)
+            {
+                childTransform.gameObject.isStatic = true;
+            }
+
+            PrefabUtility.ApplyPrefabInstance(origPrefabInst, InteractionMode.AutomatedAction);
+            PrefabUtility.SavePrefabAsset(origPrefab);
+
+            UnityEngine.Object.DestroyImmediate(origPrefabInst);
+
+            Debug.Log($"{origPath}: processed double sided");
         }
 
         public static GameObject FindOrCreatePrefab(string path)
@@ -106,6 +179,39 @@ namespace WowUnity
                 texture.assetPath = Path.GetRelativePath(mainDataPath, Path.GetFullPath(Path.Join(dirName, texture.fileNameExternal)));
                 textures[idx] = texture;
             }
+        }
+
+        public static Mesh DuplicateAndReverseMesh(Mesh mesh)
+        {
+            var invertedMesh = new Mesh()
+            {
+                vertices = mesh.vertices,
+                triangles = mesh.triangles,
+                uv = mesh.uv, // Copy UVs if necessary
+                uv2 = mesh.uv2 // Copy UVs if necessary
+            };
+
+            // Invert the normals
+            var normals = mesh.normals;
+            for (var i = 0; i < normals.Length; i++)
+            {
+                normals[i] = -normals[i];
+            }
+            invertedMesh.normals = normals;
+
+            // Invert the triangle order to keep the mesh visible from the other side
+            for (var i = 0; i < invertedMesh.subMeshCount; i++)
+            {
+                var triangles = invertedMesh.GetTriangles(i);
+                for (var j = 0; j < triangles.Length; j += 3)
+                {
+                    // Swap order of triangles
+                    (triangles[j + 1], triangles[j]) = (triangles[j], triangles[j + 1]);
+                }
+                invertedMesh.SetTriangles(triangles, i);
+            }
+
+            return invertedMesh;
         }
 
         [Serializable]

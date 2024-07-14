@@ -162,6 +162,17 @@ public class WoWUnityWindow : EditorWindow
                 }
             }
         }
+
+        if (Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP)
+        {
+            GUILayout.Space(10);
+
+            GUILayout.Label("Double-sided util", EditorStyles.boldLabel);
+            if (GUILayout.Button("Create for selected objects"))
+            {
+                CreateDoubleSided();
+            }
+        }
     }
 
     void ProcessAssets()
@@ -223,5 +234,51 @@ public class WoWUnityWindow : EditorWindow
 
     void PlaceWMOOnSelected() {
         ItemCollectionUtility.ParseFileAndSpawnDoodads(selectedForDoodads.transform, modelPlacementInfo, "wmo");
+    }
+
+    void CreateDoubleSided()
+    {
+        GameObject parent = null;
+        var doubleSidedList = new HashSet<string>();
+        foreach (var selected in Selection.gameObjects)
+        {
+            if (!selected.GetComponent<MeshFilter>())
+            {
+                Debug.LogWarning("Invalid object selected.");
+                return;
+            }
+
+            if (parent == null)
+            {
+                parent = selected.transform.parent.gameObject;
+            }
+            else
+            {
+                if (parent != selected.transform.parent.gameObject)
+                {
+                    Debug.LogWarning("Selected objects must be children of the same parent.");
+                    return;
+                }
+            }
+
+            doubleSidedList.Add(selected.name);
+        }
+
+        var nonDoubleSided = new List<string>();
+        for (var i = 0; i < parent.transform.childCount; i++)
+        {
+            var child = parent.transform.GetChild(i);
+            if (!doubleSidedList.Contains(child.name))
+                nonDoubleSided.Add(child.name);
+        }
+
+        var path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(parent);
+        if (path == null || !path.EndsWith(".obj"))
+        {
+            Debug.LogWarning("Invalid object selected.");
+            return;
+        }
+
+        M2Utility.ProcessDoubleSided(path, nonDoubleSided);
     }
 }

@@ -21,12 +21,12 @@ namespace WowUnity
                 return;
             }
 
-            Debug.Log($"{path}: processing wmo");
-
             if (M2Utility.FindPrefab(path) != null)
             {
                 return;
             }
+
+            Debug.Log($"{path}: processing wmo");
 
             M2Utility.ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
