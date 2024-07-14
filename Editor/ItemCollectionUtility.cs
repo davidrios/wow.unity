@@ -68,7 +68,7 @@ namespace WowUnity
             placed.transform.parent = doodadSetRoot.transform;
         }
 
-        private static void ParseFileAndSpawnDoodads(Transform doodadSetRoot, TextAsset modelPlacementInformation, string typeToPlace = "m2", bool useSetSubtrees = true)
+        public static void ParseFileAndSpawnDoodads(Transform doodadSetRoot, TextAsset modelPlacementInformation, string typeToPlace = "m2", bool useSetSubtrees = true)
         {
             var isAdt = Regex.IsMatch(modelPlacementInformation.name, @"adt_\d+_\d+");
 

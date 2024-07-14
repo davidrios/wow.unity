@@ -7,6 +7,8 @@ using WowUnity;
 public class WoWUnityWindow : EditorWindow
 {
     private Dictionary<string, GameObject> selectedAssets;
+    private GameObject selectedForDoodads;
+    private TextAsset modelPlacementInfo;
 
     [MenuItem("Window/wow.unity")]
     public static void ShowWindow()
@@ -17,11 +19,13 @@ public class WoWUnityWindow : EditorWindow
     private void OnEnable()
     {
         Selection.selectionChanged += OnSelectionChangeForMap;
+        Selection.selectionChanged += OnSelectionChangeForDoodadPlacement;
     }
 
     private void OnDisable()
     {
         Selection.selectionChanged -= OnSelectionChangeForMap;
+        Selection.selectionChanged -= OnSelectionChangeForDoodadPlacement;
     }
 
     void OnSelectionChangeForMap()
@@ -42,6 +46,17 @@ public class WoWUnityWindow : EditorWindow
 
             selectedAssets[obj.name] = obj as GameObject;
         }
+        Repaint();
+    }
+
+    void OnSelectionChangeForDoodadPlacement()
+    {
+        var selected = Selection.GetFiltered<GameObject>(SelectionMode.Editable | SelectionMode.ExcludePrefab);
+        if (selected.Length > 0)
+            selectedForDoodads = selected[0];
+        else
+            selectedForDoodads = null;
+
         Repaint();
     }
 
@@ -102,6 +117,51 @@ public class WoWUnityWindow : EditorWindow
                 GUILayout.EndHorizontal();
             }
         }
+
+        GUILayout.Space(10);
+
+        GUILayout.Label("Manual doodad placement", EditorStyles.boldLabel);
+        modelPlacementInfo = EditorGUILayout.ObjectField("Placement CSV: ", modelPlacementInfo, typeof(TextAsset), false) as TextAsset;
+        if (modelPlacementInfo != null)
+        {
+            if (Path.GetExtension(AssetDatabase.GetAssetPath(modelPlacementInfo)).ToLower() != ".csv")
+                modelPlacementInfo = null;
+        }
+
+        if (selectedForDoodads == null)
+        {
+            GUILayout.Label("Select a game object to place the doodads in.");
+        }
+        else
+        {
+            GUILayout.Label($"Place in game object: {selectedForDoodads.name}");
+
+            if (modelPlacementInfo != null)
+            {
+                GUILayout.BeginHorizontal();
+                try
+                {
+
+                    if (GUILayout.Button("Place M2s"))
+                    {
+                        PlaceM2OnSelected();
+                    }
+
+                    if (GUILayout.Button("Place WMOs"))
+                    {
+                        PlaceWMOOnSelected();
+                    }
+                }
+                catch (System.Exception)
+                {
+                    throw;
+                }
+                finally
+                {
+                    GUILayout.EndHorizontal();
+                }
+            }
+        }
     }
 
     void ProcessAssets()
@@ -155,5 +215,13 @@ public class WoWUnityWindow : EditorWindow
         }
 
         Debug.Log("Done placing doodads.");
+    }
+
+    void PlaceM2OnSelected() {
+        ItemCollectionUtility.ParseFileAndSpawnDoodads(selectedForDoodads.transform, modelPlacementInfo, "m2");
+    }
+
+    void PlaceWMOOnSelected() {
+        ItemCollectionUtility.ParseFileAndSpawnDoodads(selectedForDoodads.transform, modelPlacementInfo, "wmo");
     }
 }
