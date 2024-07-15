@@ -31,6 +31,8 @@ namespace WowUnity
         }
 
         public int foliageRayLayer = 6;
+        public int foliageRayPreventLayerMask = 0;
+        public float foliageSpawnDistance = 120f;
         public float foliageDensityFactor = 1.0f;
         public bool foliageSetupLODs = true;
         public float foliageCullWidth = 10;
@@ -48,6 +50,12 @@ namespace WowUnity
             EditorGUILayout.PropertyField(
                 serializedObject.FindProperty("foliageRayLayer"),
                 new GUIContent("Raycast layer"));
+            EditorGUILayout.PropertyField(
+                serializedObject.FindProperty("foliageRayPreventLayerMask"),
+                new GUIContent("Prevent raycast layer mask"));
+            EditorGUILayout.PropertyField(
+                serializedObject.FindProperty("foliageSpawnDistance"),
+                new GUIContent("Spawn distance from player"));
             EditorGUILayout.PropertyField(
                 serializedObject.FindProperty("foliageDensityFactor"),
                 new GUIContent("Density factor", "Density factor when placing the foliage"));

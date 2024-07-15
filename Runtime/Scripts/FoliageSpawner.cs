@@ -1,4 +1,6 @@
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using WowUnity;
 
@@ -11,13 +13,24 @@ public class LayerInfo
 
 public class FoliageSpawner : MonoBehaviour
 {
+    public const int SPAWNED_PER_FRAME = 50;
     private static readonly HashSet<FoliageSpawner> spawners = new();
+    private static int totalSpawnCount = 0;
+
+    public static int TotalSpawnCount() {  return totalSpawnCount; }
 
     public static void RespawnAll()
     {
+        var player = GameObject.FindGameObjectsWithTag("Player")[0];
+        var spawnDistance = RuntimeSettings.GetSettings().foliageSpawnDistance;
+        var density = RuntimeSettings.GetSettings().foliageDensityFactor;
+
         foreach (var s in spawners)
         {
-            s.SpawnFoliage(RuntimeSettings.GetSettings().foliageDensityFactor);
+            s.spawnDistance = spawnDistance;
+            s.spawnExecuted = false;
+            if (Vector3.Distance(s.distanceTest.transform.position, player.transform.position) < spawnDistance)
+                s.SpawnFoliage(density);
         }
     }
 
@@ -66,13 +79,18 @@ public class FoliageSpawner : MonoBehaviour
     public List<float> layer3Weights;
     public Bounds chunkBounds;
 
-    private List<GameObject> spawned;
+    private List<GameObject> spawnedObjects;
+    private bool spawnExecuted = false;
+    private int spawningIter = 0;
     private List<GameObject> layerContainers;
-    private Dictionary<int, float>[] layerPixels = new Dictionary<int, float>[4];
+    private readonly Dictionary<int, float>[] layerPixels = new Dictionary<int, float>[4];
+    private float spawnDistance;
+    private GameObject distanceTest;
 
     void Start()
     {
         spawners.Add(this);
+        spawnDistance = RuntimeSettings.GetSettings().foliageSpawnDistance;
 
         layerContainers = new();
         for (var i = 0; i < 4; i++)
@@ -85,8 +103,16 @@ public class FoliageSpawner : MonoBehaviour
                 chunkBounds.center.z - chunkBounds.extents.z
             );
             layerContainers.Add(go);
+
+            distanceTest = new GameObject() { name = $"distance" };
+            distanceTest.transform.parent = transform;
+            distanceTest.transform.localPosition = new Vector3(
+                chunkBounds.center.x,
+                chunkBounds.center.y,
+                chunkBounds.center.z
+            );
         }
-        spawned = new();
+        spawnedObjects = new();
 
         var pixels = RotateTexture180(chunkTex).GetPixels();
         var pixelsBase = new Dictionary<int, float>();
@@ -112,8 +138,13 @@ public class FoliageSpawner : MonoBehaviour
         layerPixels[1] = pixelsR;
         layerPixels[2] = pixelsG;
         layerPixels[3] = pixelsB;
+    }
 
-        SpawnFoliage(RuntimeSettings.GetSettings().foliageDensityFactor);
+    void Update()
+    {
+        var player = GameObject.FindGameObjectsWithTag("Player")[0];
+        if (!spawnExecuted && Vector3.Distance(distanceTest.transform.position, player.transform.position) < spawnDistance)
+            SpawnFoliage(RuntimeSettings.GetSettings().foliageDensityFactor);
     }
 
     private void OnDestroy()
@@ -168,15 +199,28 @@ public class FoliageSpawner : MonoBehaviour
 
     void SpawnFoliage(float factor)
     {
-        if (layerCount == 0)
-            return;
+        spawnExecuted = true;
+        StartCoroutine(SpawnFoliageOverTime(factor, ++spawningIter));
+    }
 
-        foreach (var s in spawned)
+    IEnumerator SpawnFoliageOverTime(float factor, int myIter)
+    {
+        var perFrameCount = 0;
+
+        foreach (var s in this.spawnedObjects)
         {
             Destroy(s);
+            Interlocked.Decrement(ref totalSpawnCount);
+            perFrameCount++;
+            if (perFrameCount % SPAWNED_PER_FRAME == SPAWNED_PER_FRAME - 1)
+                yield return null;
         }
 
-        spawned = new List<GameObject>();
+        if (layerCount == 0)
+            yield break;
+
+        perFrameCount = 0;
+        var spawnedObjects = new List<GameObject>();
 
         var prefabsWeights = GetPrefabsWeights();
 
@@ -193,6 +237,19 @@ public class FoliageSpawner : MonoBehaviour
 
                 foreach (var (pixelIdx, pixelVal) in layerPixels[idx])
                 {
+                    if (spawningIter != myIter)
+                    {
+                        foreach (var s in spawnedObjects)
+                        {
+                            Destroy(s);
+                            Interlocked.Decrement(ref totalSpawnCount);
+                            perFrameCount++;
+                            if (perFrameCount % SPAWNED_PER_FRAME == SPAWNED_PER_FRAME - 1)
+                                yield return null;
+                        }
+                        yield break;
+                    }
+
                     if (Random.value > prob * pixelVal)
                         continue;
 
@@ -210,21 +267,16 @@ public class FoliageSpawner : MonoBehaviour
                         pos.z
                     ) + layer.transform.position;
 
-                    int terrainLayer = 1 << RuntimeSettings.GetSettings().foliageRayLayer;
+                    if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit _, 5000, RuntimeSettings.GetSettings().foliageRayPreventLayerMask))
+                        continue;
 
-                    if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit _, 5000, 0xfffffff & (~terrainLayer)))
-                    {
-                        // Skip if there's anything in the way
-                        //continue;
-                    }
-
-                    if (!Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 5000, terrainLayer))
+                    if (!Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 5000, 1 << RuntimeSettings.GetSettings().foliageRayLayer))
                         continue;
 
                     var foliage = Instantiate(doodad, hit.point, Quaternion.identity);
                     foliage.transform.RotateAround(hit.point, Vector3.up, Random.Range(0, 180));
                     foliage.transform.parent = layer.transform;
-                    var scale = Random.Range(0, 0.3f);
+                    var scale = Random.Range(0, 0.5f);
                     foliage.transform.localScale = Vector3.one - new Vector3(scale, scale, scale);
                     foliage.isStatic = false;
                     var renderers = new List<Renderer>();
@@ -251,9 +303,16 @@ public class FoliageSpawner : MonoBehaviour
                         lodGroup.SetLODs(lods);
                     }
 
-                    spawned.Add(foliage);
+                    spawnedObjects.Add(foliage);
+                    Interlocked.Increment(ref totalSpawnCount);
+                    perFrameCount++;
+
+                    if (perFrameCount % SPAWNED_PER_FRAME == SPAWNED_PER_FRAME - 1)
+                        yield return null;
                 }
             }
         }
+
+        this.spawnedObjects = spawnedObjects;
     }
 }

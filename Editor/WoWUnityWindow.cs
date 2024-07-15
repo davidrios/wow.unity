@@ -182,7 +182,9 @@ public class WoWUnityWindow : EditorWindow
                 CreateDoubleSided();
         }
 
-        if (GUILayout.Button("Test respawn foliage"))
+        GUILayout.Space(10);
+        GUILayout.Label("Foliage", EditorStyles.boldLabel);
+        if (GUILayout.Button("Respawn All"))
             FoliageSpawner.RespawnAll();
     }
 
