@@ -1,7 +1,9 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace WowUnity.Foliage
 {
@@ -35,28 +37,55 @@ namespace WowUnity.Foliage
         public const int SPAWNED_PER_FRAME = 50;
         private static readonly HashSet<FoliageSpawner> spawners = new();
         private static int totalSpawnCount = 0;
+        private static ConcurrentDictionary<int, ConcurrentStack<GameObject>> foliagePool = new();
 
         public static int TotalSpawnCount() { return totalSpawnCount; }
 
         public static void RespawnAll()
         {
-            var player = GameObject.FindGameObjectsWithTag("Player")[0];
-            var spawnDistance = RuntimeSettings.GetSettings().foliageSpawnDistance;
-            var density = RuntimeSettings.GetSettings().foliageDensityFactor;
+            var foliagePool = FoliageSpawner.foliagePool;
+            FoliageSpawner.foliagePool = new();
+
+            foreach (var (prefabId, stack) in foliagePool)
+            {
+                foreach (var instance in stack)
+                {
+                    RemoveFoliage((prefabId, instance), true);
+                }
+            }
 
             foreach (var s in spawners)
             {
-                s.spawnDistance = spawnDistance;
-                s.spawnExecuted = false;
+                if (s.spawnedObjects != null)
+                {
+                    foreach (var instance in s.spawnedObjects)
+                    {
+                        RemoveFoliage(instance, true);
+                    }
+                }
+
                 s.calculatedObjects = null;
-                if (Vector3.Distance(s.distanceTest.transform.position, player.transform.position) < spawnDistance)
-                    s.SpawnFoliage(density);
+                s.spawnedObjects = null;
+                s.spawnExecuted = false;
             }
         }
 
-        public static GameObject GetFoliage (GameObject prefab, Vector3 position, Quaternion rotation, Vector3 scale, Transform parent)
+        public static GameObject GetFoliage(GameObject prefab, Vector3 position, Quaternion rotation, Vector3 scale, Transform parent)
         {
-            var foliage = Instantiate(prefab, position, rotation);
+            var pool = foliagePool.GetOrAdd(prefab.GetInstanceID(), (_) => { return new ConcurrentStack<GameObject>(); });
+
+            if (pool.TryPop(out GameObject foliage))
+            {
+                foliage.transform.SetPositionAndRotation(position, rotation);
+                foliage.transform.parent = parent;
+                foliage.transform.localScale = scale;
+                foliage.SetActive(true);
+                return foliage;
+            }
+
+            var settings = RuntimeSettings.GetSettings();
+
+            foliage = Instantiate(prefab, position, rotation);
             foliage.transform.parent = parent;
             foliage.transform.localScale = scale;
 
@@ -69,11 +98,13 @@ namespace WowUnity.Foliage
                 foreach (Transform subtransform in transform.GetComponentInChildren<Transform>())
                 {
                     subtransform.gameObject.isStatic = false;
-                    renderers.AddRange(subtransform.gameObject.GetComponentsInChildren<Renderer>());
+                    foreach (var renderer in subtransform.gameObject.GetComponentsInChildren<Renderer>())
+                    {
+                        renderer.shadowCastingMode = settings.foliageCastsShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
+                        renderers.Add(renderer);
+                    }
                 }
             }
-
-            var settings = RuntimeSettings.GetSettings();
 
             if (settings.foliageSetupLODs)
             {
@@ -90,10 +121,21 @@ namespace WowUnity.Foliage
             return foliage;
         }
 
-        public static void ReturnFoliage(GameObject instance)
+        public static void RemoveFoliage((int, GameObject) item, bool delete = false)
         {
-            Destroy(instance);
-            Interlocked.Decrement(ref totalSpawnCount);
+            if (delete)
+            {
+                Destroy(item.Item2);
+                Interlocked.Decrement(ref totalSpawnCount);
+            }
+            else
+            {
+                if (!foliagePool.TryGetValue(item.Item1, out ConcurrentStack<GameObject> pool))
+                    return;
+
+                item.Item2.SetActive(false);
+                pool.Push(item.Item2);
+            }
         }
 
         public Texture2D chunkTex;
@@ -109,19 +151,19 @@ namespace WowUnity.Foliage
         public List<float> layer3Weights;
         public Bounds chunkBounds;
 
-        private List<GameObject> spawnedObjects;
+        private List<(int, GameObject)> spawnedObjects;
         private List<CalculatedObject> calculatedObjects;
         private bool spawnExecuted = false;
         private int spawningIter = 0;
         private List<GameObject> layerContainers;
         private readonly Dictionary<int, float>[] layerPixels = new Dictionary<int, float>[4];
-        private float spawnDistance;
         private GameObject distanceTest;
+        private RuntimeSettings settings;
 
         void Start()
         {
             spawners.Add(this);
-            spawnDistance = RuntimeSettings.GetSettings().foliageSpawnDistance;
+            settings = RuntimeSettings.GetSettings();
 
             layerContainers = new();
             for (var i = 0; i < 4; i++)
@@ -134,15 +176,16 @@ namespace WowUnity.Foliage
                     chunkBounds.center.z - chunkBounds.extents.z
                 );
                 layerContainers.Add(go);
-
-                distanceTest = new GameObject() { name = $"distance" };
-                distanceTest.transform.parent = transform;
-                distanceTest.transform.localPosition = new Vector3(
-                    chunkBounds.center.x,
-                    chunkBounds.center.y,
-                    chunkBounds.center.z
-                );
             }
+
+            distanceTest = new GameObject() { name = $"distance" };
+            distanceTest.transform.parent = transform;
+            distanceTest.transform.localPosition = new Vector3(
+                chunkBounds.center.x,
+                chunkBounds.center.y,
+                chunkBounds.center.z
+            );
+
             spawnedObjects = new();
 
             var pixels = Utils.RotateTexture180(chunkTex).GetPixels();
@@ -176,9 +219,9 @@ namespace WowUnity.Foliage
             var player = GameObject.FindGameObjectsWithTag("Player")[0];
             var distance = Vector3.Distance(distanceTest.transform.position, player.transform.position);
 
-            if (distance < spawnDistance)
-                SpawnFoliage(RuntimeSettings.GetSettings().foliageDensityFactor);
-            else if (distance > RuntimeSettings.GetSettings().foliagePoolDistance)
+            if (distance < settings.foliageSpawnDistance)
+                SpawnFoliage(settings.foliageDensityFactor);
+            else if (distance > settings.foliagePoolDistance)
                 DespawnFoliage();
         }
 
@@ -249,18 +292,18 @@ namespace WowUnity.Foliage
             yield return StartCoroutine(DespawnFoliageJob(this.spawnedObjects));
 
             var perFrameCount = 0;
-            var spawnedObjects = new List<GameObject>();
+            var spawnedObjects = new List<(int, GameObject)>();
 
             foreach (var obj in calculatedObjects)
             {
                 if (spawningIter != myIter)
                 {
-                    StartCoroutine(DespawnFoliageJob(spawnedObjects));
+                    StartCoroutine(DespawnFoliageJob(spawnedObjects, true));
                     yield break;
                 }
 
                 var layer = layerContainers[obj.LayerIndex];
-                spawnedObjects.Add(GetFoliage(obj.Prefab, obj.Position, obj.Rotation, obj.Scale, layer.transform));
+                spawnedObjects.Add((obj.Prefab.GetInstanceID(), GetFoliage(obj.Prefab, obj.Position, obj.Rotation, obj.Scale, layer.transform)));
 
                 perFrameCount++;
                 if (perFrameCount % SPAWNED_PER_FRAME == SPAWNED_PER_FRAME - 1)
@@ -276,9 +319,8 @@ namespace WowUnity.Foliage
 
             var perFrameCount = 0;
             var prefabsWeights = GetPrefabsAndWeights();
-            var settings = RuntimeSettings.GetSettings();
             var calculatedObjects = new List<CalculatedObject>();
-            var spawnedObjects = new List<GameObject>();
+            var spawnedObjects = new List<(int, GameObject)>();
 
             for (var idx = 0; idx < layerCount; idx++)
             {
@@ -295,7 +337,7 @@ namespace WowUnity.Foliage
                     {
                         if (spawningIter != myIter)
                         {
-                            StartCoroutine(DespawnFoliageJob(spawnedObjects));
+                            StartCoroutine(DespawnFoliageJob(spawnedObjects, true));
                             yield break;
                         }
 
@@ -322,11 +364,11 @@ namespace WowUnity.Foliage
                         if (!Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 5000, 1 << settings.foliageRayLayer))
                             continue;
 
-                        var scaleF = Random.Range(0, 0.5f);
-                        var scale = Vector3.one - new Vector3(scaleF, scaleF, scaleF);
+                        var scaleF = Random.Range(0.5f, 1f);
+                        var scale = new Vector3(scaleF, scaleF, scaleF);
                         var foliage = GetFoliage(doodad, hit.point, Quaternion.identity, scale, layer.transform);
                         foliage.transform.RotateAround(hit.point, Vector3.up, Random.Range(0, 180));
-                        spawnedObjects.Add(foliage);
+                        spawnedObjects.Add((doodad.GetInstanceID(), foliage));
                         calculatedObjects.Add(new CalculatedObject(idx, doodad, hit.point, foliage.transform.rotation, scale));
 
                         perFrameCount++;
@@ -351,7 +393,7 @@ namespace WowUnity.Foliage
             StartCoroutine(DespawnFoliageJob(spawnedObjects));
         }
 
-        IEnumerator DespawnFoliageJob(List<GameObject> spawnedObjects)
+        IEnumerator DespawnFoliageJob(List<(int, GameObject)> spawnedObjects, bool delete = false)
         {
             if (spawnedObjects == null)
                 yield break;
@@ -359,7 +401,7 @@ namespace WowUnity.Foliage
             var perFrameCount = 0;
             foreach (var s in spawnedObjects)
             {
-                ReturnFoliage(s);
+                RemoveFoliage(s, delete);
                 perFrameCount++;
                 if (perFrameCount % SPAWNED_PER_FRAME == SPAWNED_PER_FRAME - 1)
                     yield return null;
