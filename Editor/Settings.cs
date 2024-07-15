@@ -40,7 +40,5 @@ namespace WowUnity
 
         [Tooltip("Create mesh collisions for all M2 that don't have an exported `.phys.obj`.")]
         public bool createCollisionForAllM2 = false;
-
-        public float foliageDensityFactor = 1.0f;
     }
 }

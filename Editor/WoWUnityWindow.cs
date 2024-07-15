@@ -127,8 +127,8 @@ public class WoWUnityWindow : EditorWindow
 
             try
             {
-                if (GUILayout.Button("Place Foliage"))
-                    PlaceFoliage(Settings.GetSettings().foliageDensityFactor);
+                if (GUILayout.Button("Setup Foliage Spawner"))
+                    SetupFoliage();
             }
             finally
             {
@@ -181,6 +181,9 @@ public class WoWUnityWindow : EditorWindow
             if (GUILayout.Button("Create for selected"))
                 CreateDoubleSided();
         }
+
+        if (GUILayout.Button("Test respawn foliage"))
+            FoliageSpawner.RespawnAll();
     }
 
     void ProcessAssets()
@@ -235,7 +238,7 @@ public class WoWUnityWindow : EditorWindow
         Debug.Log("Done placing doodads.");
     }
 
-    public void PlaceFoliage(float foliageDensity)
+    public void SetupFoliage()
     {
         SetupTerrain();
         AssetConversionManager.JobPostprocessAllAssets();
@@ -250,16 +253,15 @@ public class WoWUnityWindow : EditorWindow
                 if (parentTransform.name == adtRoot.name)
                     adtRoot = parentTransform;
 
-                var sectionsContainer = adtRoot.Find(adtRoot.name);
-                for (var i = 0; i < sectionsContainer.childCount; i++)
+                var chunksContainer = adtRoot.Find(adtRoot.name);
+                for (var i = 0; i < chunksContainer.childCount; i++)
                 {
-                    ADTUtility.PlaceChunkFoliage(adtRoot, sectionsContainer.GetChild(i).gameObject, foliageDensity);
+                    ADTUtility.PlaceFoliageSpawner(chunksContainer.GetChild(i).gameObject);
                 }
             }
             else
             {
-                var adtRoot = selectedAsset.transform.parent.parent;
-                ADTUtility.PlaceChunkFoliage(adtRoot, selectedAsset, foliageDensity);
+                ADTUtility.PlaceFoliageSpawner(selectedAsset);
             }
 
         }

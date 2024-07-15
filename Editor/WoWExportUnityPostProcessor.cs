@@ -45,6 +45,7 @@ public class WoWExportUnityPostprocessor : AssetPostprocessor
         textureImporter.filterMode = FilterMode.Bilinear;
         textureImporter.mipmapEnabled = false;
         textureImporter.sRGBTexture = false;
+        textureImporter.isReadable = true;
     }
 
     public void OnPreprocessModel()
