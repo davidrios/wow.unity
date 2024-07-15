@@ -134,7 +134,7 @@ namespace WowUnity
                 return;
 
             var chunkMesh = chunk.GetComponent<MeshFilter>().sharedMesh;
-            var layersInfo = new List<LayerInfo>();
+            var layersInfo = new List<Foliage.LayerInfo>();
 
             for (var idx = 0; idx < metadata.layers.Count; idx++)
             {
@@ -175,7 +175,7 @@ namespace WowUnity
                     layerDoodadWeights.Add(effectData.DoodadWeight[j]);
                 }
 
-                layersInfo.Add(new LayerInfo()
+                layersInfo.Add(new Foliage.LayerInfo()
                 {
                     density = effectData.Density,
                     doodads = layerDoodads,
@@ -183,8 +183,8 @@ namespace WowUnity
                 });
             }
 
-            if (!chunk.TryGetComponent<FoliageSpawner>(out var spawner))
-                spawner = chunk.AddComponent<FoliageSpawner>();
+            if (!chunk.TryGetComponent<Foliage.FoliageSpawner>(out var spawner))
+                spawner = chunk.AddComponent<Foliage.FoliageSpawner>();
 
             spawner.SetupSpawner(AssetDatabase.LoadAssetAtPath<Texture2D>(Path.Join(dirName, $"tex_{chunkName}.png")), layersInfo, chunkMesh.bounds);
         }

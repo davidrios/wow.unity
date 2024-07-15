@@ -185,7 +185,7 @@ public class WoWUnityWindow : EditorWindow
         GUILayout.Space(10);
         GUILayout.Label("Foliage", EditorStyles.boldLabel);
         if (GUILayout.Button("Respawn All"))
-            FoliageSpawner.RespawnAll();
+            WowUnity.Foliage.FoliageSpawner.RespawnAll();
     }
 
     void ProcessAssets()
