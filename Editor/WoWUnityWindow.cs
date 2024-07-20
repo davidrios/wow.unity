@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using WowUnity;
 
@@ -168,10 +169,8 @@ public class WoWUnityWindow : EditorWindow
             GUILayout.Space(10);
 
             GUILayout.Label("Double-sided util", EditorStyles.boldLabel);
-            if (GUILayout.Button("Create for selected objects"))
-            {
+            if (GUILayout.Button("Create for selected"))
                 CreateDoubleSided();
-            }
         }
     }
 
@@ -272,13 +271,45 @@ public class WoWUnityWindow : EditorWindow
                 nonDoubleSided.Add(child.name);
         }
 
-        var path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(parent);
-        if (path == null || !path.EndsWith(".obj"))
+        var dinst = Instantiate(parent);
+        try
         {
-            Debug.LogWarning("Invalid object selected.");
-            return;
-        }
+            foreach (var name in nonDoubleSided)
+            {
+                var nonDouble = dinst.transform.Find(name);
+                if (nonDouble != null)
+                    DestroyImmediate(nonDouble.gameObject);
+            }
 
-        M2Utility.ProcessDoubleSided(path, nonDoubleSided);
+            var renderers = new List<Renderer>();
+            foreach (var meshFilter in dinst.GetComponentsInChildren<MeshFilter>())
+            {
+                meshFilter.sharedMesh = M2Utility.DuplicateAndReverseMesh(meshFilter.sharedMesh);
+                renderers.Add(meshFilter.gameObject.GetComponent<Renderer>());
+            }
+
+            var path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(parent);
+            if (path == null || path.Length == 0)
+            {
+                var currentPrefabStage = PrefabStageUtility.GetCurrentPrefabStage();
+                if (currentPrefabStage == null)
+                {
+                    Debug.LogWarning("couldn't get the prefab");
+                    return;
+                }
+
+                path = currentPrefabStage.assetPath;
+            }
+            var invPath = path.Replace(Path.GetExtension(path), M2Utility.DOUBLE_SIDED_INVERSE_SUFFIX);
+            ObjExporter.ExportObj(dinst, invPath);
+
+            AssetDatabase.ImportAsset(invPath);
+
+            M2Utility.SetupDoubleSided(parent.transform.parent.gameObject, invPath);
+        }
+        finally
+        {
+            DestroyImmediate(dinst);
+        }
     }
 }

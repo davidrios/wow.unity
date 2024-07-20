@@ -100,7 +100,19 @@ namespace WowUnity
                 return;
             }
 
-            var texturesByRenderer = origPrefabInst.GetComponentsInChildren<Renderer>()
+            SetupDoubleSided(origPrefabInst, invPath);
+
+            PrefabUtility.ApplyPrefabInstance(origPrefabInst, InteractionMode.AutomatedAction);
+            PrefabUtility.SavePrefabAsset(origPrefab);
+
+            UnityEngine.Object.DestroyImmediate(origPrefabInst);
+
+            Debug.Log($"{origPath}: processed double sided");
+        }
+
+        public static GameObject SetupDoubleSided(GameObject gameObject, string invPath)
+        {
+            var texturesByRenderer = gameObject.GetComponentsInChildren<Renderer>()
                 .Select((item) => (item.name, item.sharedMaterial))
                 .ToDictionary((item) => item.Item1, (item) => item.Item2);
 
@@ -110,19 +122,14 @@ namespace WowUnity
             {
                 renderers[idx].sharedMaterial = texturesByRenderer[renderers[idx].name];
             }
-            var invPrefabInst = PrefabUtility.InstantiatePrefab(invPrefab, origPrefabInst.transform) as GameObject;
-            invPrefabInst.isStatic = true;
+            var invPrefabInst = PrefabUtility.InstantiatePrefab(invPrefab, gameObject.transform) as GameObject;
+            invPrefabInst.isStatic = gameObject.isStatic;
             foreach (Transform childTransform in invPrefabInst.transform)
             {
-                childTransform.gameObject.isStatic = true;
+                childTransform.gameObject.isStatic = gameObject.isStatic;
             }
 
-            PrefabUtility.ApplyPrefabInstance(origPrefabInst, InteractionMode.AutomatedAction);
-            PrefabUtility.SavePrefabAsset(origPrefab);
-
-            UnityEngine.Object.DestroyImmediate(origPrefabInst);
-
-            Debug.Log($"{origPath}: processed double sided");
+            return invPrefabInst;
         }
 
         public static GameObject FindOrCreatePrefab(string path)

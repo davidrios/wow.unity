@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEditor;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -19,15 +18,13 @@ namespace WowUnity
         private int vertexOffset = 0;
         private int normalOffset = 0;
         private int uvOffset = 0;
+        private List<string> lines;
+        Dictionary<string, ObjMaterial> materialList;
 
-        private string MeshToString(MeshFilter mf, Dictionary<string, ObjMaterial> materialList)
+        private string MeshToString(Mesh m, Transform transform, Material[] mats, string groupName)
         {
-            var m = mf.sharedMesh;
-            var mats = mf.GetComponent<Renderer>().sharedMaterials;
-
             var sb = new StringBuilder();
 
-            var groupName = mf.name;
             if (string.IsNullOrEmpty(groupName))
             {
                 groupName = GetRandomStr();
@@ -36,7 +33,7 @@ namespace WowUnity
             sb.Append("g ").Append(groupName).Append("\n");
             foreach (var lv in m.vertices)
             {
-                var wv = mf.transform.TransformPoint(lv);
+                var wv = transform.TransformPoint(lv);
 
                 // Adjust for different coordinate system
                 sb.Append(string.Format(
@@ -51,7 +48,7 @@ namespace WowUnity
 
             foreach (var lv in m.normals)
             {
-                var wv = mf.transform.TransformDirection(lv);
+                var wv = transform.TransformDirection(lv);
 
                 sb.Append(string.Format(
                     "vn {0} {1} {2}\n",
@@ -117,50 +114,61 @@ namespace WowUnity
             return sb.ToString();
         }
 
+        private string MeshFilterToString(MeshFilter mf)
+        {
+            var m = mf.sharedMesh;
+            var mats = mf.GetComponent<Renderer>().sharedMaterials;
+            var groupName = mf.name;
+            return MeshToString(m, mf.transform, mats, groupName);
+        }
+
         private void Clear()
         {
             vertexOffset = 0;
             normalOffset = 0;
             uvOffset = 0;
+            lines = new();
+            materialList = new();
         }
 
-        private void MeshesToFile(MeshFilter[] mf, string path)
+        public void AddMeshFilters(List<MeshFilter> mfList)
+        {
+            foreach (var mf in mfList)
+            {
+                lines.Add(MeshFilterToString(mf));
+            }
+        }
+
+        public void Start()
         {
             Clear();
-            var materialList = new Dictionary<string, ObjMaterial>();
+        }
 
+        public void Write(string path)
+        {
             using StreamWriter sw = new(path);
             sw.Write("mtllib ./" + Path.GetFileNameWithoutExtension(path) + ".mtl\n");
-
-            for (var i = 0; i < mf.Length; i++)
+            foreach (var line in lines)
             {
-                sw.Write(MeshToString(mf[i], materialList));
+                sw.WriteLine(line);
             }
         }
 
         public static void ExportObj(GameObject obj, string path)
         {
-            var exportedObjects = 0;
-            var mfList = new ArrayList();
-            var meshfilter = obj.GetComponentsInChildren(typeof(MeshFilter));
-
-            for (var m = 0; m < meshfilter.Length; m++)
+            var mfList = new List<MeshFilter>();
+            foreach (var meshfilter in obj.GetComponentsInChildren<MeshFilter>())
             {
-                exportedObjects++;
-                mfList.Add(meshfilter[m]);
+                mfList.Add(meshfilter);
             }
 
-            if (exportedObjects == 0)
+            if (mfList.Count == 0)
                 return;
 
-            var mf = new MeshFilter[mfList.Count];
-
-            for (int i = 0; i < mfList.Count; i++)
-            {
-                mf[i] = (MeshFilter)mfList[i];
-            }
-
-            (new ObjExporter()).MeshesToFile(mf, path);
+            var exporter = new ObjExporter();
+            exporter.Start();
+            exporter.AddMeshFilters(mfList);
+            exporter.Write(path);
         }
 
         private static string FloatToStr(double number)
