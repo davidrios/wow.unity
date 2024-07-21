@@ -73,6 +73,9 @@ namespace WowUnity
                 serializedObject.FindProperty("foliageCastsShadows"),
                 new GUIContent("Casts shadows"));
 
+            if (GUILayout.Button("Apply and Respawn"))
+                Foliage.FoliageSpawner.RespawnAll();
+
             serializedObject.ApplyModifiedProperties();
         }
     }

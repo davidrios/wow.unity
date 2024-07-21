@@ -150,6 +150,7 @@ namespace WowUnity.Foliage
         public List<GameObject> layer3Prefabs;
         public List<float> layer3Weights;
         public Bounds chunkBounds;
+        public int randomSeed;
 
         private List<(int, GameObject)> spawnedObjects;
         private List<CalculatedObject> calculatedObjects;
@@ -241,10 +242,11 @@ namespace WowUnity.Foliage
             };
         }
 
-        public void SetupSpawner(Texture2D chunkTex, List<LayerInfo> layersInfo, Bounds chunkBounds)
+        public void SetupSpawner(Texture2D chunkTex, List<LayerInfo> layersInfo, Bounds chunkBounds, int randomSeed)
         {
             this.chunkBounds = chunkBounds;
             this.chunkTex = chunkTex;
+            this.randomSeed = randomSeed;
 
             layerCount = layersInfo.Count;
             layerDensities = new();
@@ -317,6 +319,7 @@ namespace WowUnity.Foliage
         {
             yield return StartCoroutine(DespawnFoliageJob(this.spawnedObjects));
 
+            var rng = new System.Random(randomSeed);
             var perFrameCount = 0;
             var prefabsWeights = GetPrefabsAndWeights();
             var calculatedObjects = new List<CalculatedObject>();
@@ -341,14 +344,14 @@ namespace WowUnity.Foliage
                             yield break;
                         }
 
-                        if (Random.value > prob * pixelVal)
+                        if (rng.NextDouble() > prob * pixelVal)
                             continue;
 
                         var x = pixelIdx % 64;
                         var z = pixelIdx / 64;
 
-                        var posX = (x / 64f) * (chunkBounds.size.x - 64f / chunkBounds.size.x) + Random.Range(0, 64f / chunkBounds.size.x);
-                        var posZ = (z / 64f) * (chunkBounds.size.z - 64f / chunkBounds.size.z) + Random.Range(0, 64f / chunkBounds.size.z);
+                        var posX = (x / 64f) * (chunkBounds.size.x - 64f / chunkBounds.size.x) + (float)rng.NextDouble() * (64f / chunkBounds.size.x);
+                        var posZ = (z / 64f) * (chunkBounds.size.z - 64f / chunkBounds.size.z) + (float)rng.NextDouble() * (64f / chunkBounds.size.z);
 
                         var pos = new Vector3(posX, -chunkBounds.size.y * 2, posZ);
 
@@ -364,10 +367,10 @@ namespace WowUnity.Foliage
                         if (!Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 5000, 1 << settings.foliageRayLayer))
                             continue;
 
-                        var scaleF = Random.Range(0.5f, 1f);
+                        var scaleF = 1f - (float)(rng.NextDouble() * 0.5f);
                         var scale = new Vector3(scaleF, scaleF, scaleF);
                         var foliage = GetFoliage(doodad, hit.point, Quaternion.identity, scale, layer.transform);
-                        foliage.transform.RotateAround(hit.point, Vector3.up, Random.Range(0, 180));
+                        foliage.transform.RotateAround(hit.point, Vector3.up, (float)(rng.NextDouble() * 180));
                         spawnedObjects.Add((doodad.GetInstanceID(), foliage));
                         calculatedObjects.Add(new CalculatedObject(idx, doodad, hit.point, foliage.transform.rotation, scale));
 

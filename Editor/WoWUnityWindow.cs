@@ -181,11 +181,6 @@ public class WoWUnityWindow : EditorWindow
             if (GUILayout.Button("Create for selected"))
                 CreateDoubleSided();
         }
-
-        GUILayout.Space(10);
-        GUILayout.Label("Foliage", EditorStyles.boldLabel);
-        if (GUILayout.Button("Respawn All"))
-            WowUnity.Foliage.FoliageSpawner.RespawnAll();
     }
 
     void ProcessAssets()

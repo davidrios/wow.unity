@@ -186,7 +186,11 @@ namespace WowUnity
             if (!chunk.TryGetComponent<Foliage.FoliageSpawner>(out var spawner))
                 spawner = chunk.AddComponent<Foliage.FoliageSpawner>();
 
-            spawner.SetupSpawner(AssetDatabase.LoadAssetAtPath<Texture2D>(Path.Join(dirName, $"tex_{chunkName}.png")), layersInfo, chunkMesh.bounds);
+            spawner.SetupSpawner(
+                AssetDatabase.LoadAssetAtPath<Texture2D>(Path.Join(dirName, $"tex_{chunkName}.png")),
+                layersInfo,
+                chunkMesh.bounds,
+                (int)(Random.value * 0xffffff));
         }
 
         public class Tex
