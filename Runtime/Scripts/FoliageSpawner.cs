@@ -106,7 +106,7 @@ namespace WowUnity.Foliage
                 }
             }
 
-            if (settings.foliageSetupLODs)
+            if (settings.foliageSetupLODs && !foliage.TryGetComponent<LODGroup>(out var _))
             {
                 var lodGroup = foliage.AddComponent<LODGroup>();
                 var lods = lodGroup.GetLODs();

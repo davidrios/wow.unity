@@ -48,6 +48,10 @@ namespace WowUnity
             {
                 child.gameObject.AddComponent<MeshCollider>();
             }
+
+            if (Settings.GetSettings().addLODGroups)
+                ModelUtility.SetupLODGroup(prefabInst.transform.GetChild(0).gameObject);
+
             PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
             PrefabUtility.SavePrefabAsset(prefab);
 

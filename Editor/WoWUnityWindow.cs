@@ -181,6 +181,12 @@ public class WoWUnityWindow : EditorWindow
             if (GUILayout.Button("Create for selected"))
                 CreateDoubleSided();
         }
+
+        GUILayout.Space(10);
+
+        GUILayout.Label("LOD Groups", EditorStyles.boldLabel);
+        if (GUILayout.Button("Setup on selected"))
+            SetupLODGroup();
     }
 
     void ProcessAssets()
@@ -350,5 +356,16 @@ public class WoWUnityWindow : EditorWindow
         {
             DestroyImmediate(dinst);
         }
+    }
+
+    void SetupLODGroup()
+    {
+        if (Selection.activeGameObject == null)
+        {
+            Debug.LogWarning("No game object selected.");
+            return;
+        }
+
+        ModelUtility.SetupLODGroup(Selection.activeGameObject);
     }
 }

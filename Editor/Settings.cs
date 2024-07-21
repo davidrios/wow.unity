@@ -40,5 +40,8 @@ namespace WowUnity
 
         [Tooltip("Create mesh collisions for all M2 that don't have an exported `.phys.obj`.")]
         public bool createCollisionForAllM2 = false;
+
+        [Tooltip("Add LODGroup component to imported models.")]
+        public bool addLODGroups = false;
     }
 }

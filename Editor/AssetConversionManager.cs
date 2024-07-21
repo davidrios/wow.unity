@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,6 +11,7 @@ namespace WowUnity
         private static readonly ConcurrentQueue<string> importedModelPathQueue = new();
         private static readonly ConcurrentQueue<string> importedWMOPathQueue = new();
         private static readonly ConcurrentQueue<string> physicsQueue = new();
+        private static readonly ConcurrentQueue<string> lodGroupsQueue = new();
         private static readonly ConcurrentQueue<(string, List<string>)> doubleSidedCreationQueue = new();
         private static bool isBusy = false;
 
@@ -77,6 +77,9 @@ namespace WowUnity
 
                     M2Utility.PostProcessImport(path, jsonData);
 
+                    if (Settings.GetSettings().addLODGroups)
+                        lodGroupsQueue.Enqueue(path);
+
                     itemsProcessed++;
                 }
             }
@@ -125,7 +128,21 @@ namespace WowUnity
                 if (EditorUtility.DisplayCancelableProgressBar("Setting up physics", path, itemsProcessed / itemsToProcess))
                     return;
 
-                SetupPhysics(path, createCollisionForAllM2);
+                M2Utility.SetupPhysics(path, createCollisionForAllM2);
+
+                itemsProcessed++;
+            }
+
+            itemsToProcess = lodGroupsQueue.Count;
+            itemsProcessed = 0f;
+            while (lodGroupsQueue.TryDequeue(out string path))
+            {
+                Debug.Log($"{path}: setup LODGroup");
+
+                if (EditorUtility.DisplayCancelableProgressBar("Setting up LODGroup", path, itemsProcessed / itemsToProcess))
+                    return;
+
+                ModelUtility.SetupLODGroup(path);
 
                 itemsProcessed++;
             }
@@ -142,51 +159,6 @@ namespace WowUnity
                 ItemCollectionUtility.PlaceModels(M2Utility.FindPrefab(path), placementData);
                 itemsProcessed++;
             }
-        }
-
-        public static void SetupPhysics(string path, bool useMesh)
-        {
-            var prefab = M2Utility.FindPrefab(path);
-            GameObject prefabInst;
-
-            var physicsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(path.Replace(".obj", ".phys.obj"));
-            if (physicsPrefab == null)
-            {
-                if (useMesh)
-                {
-                    prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-                    var childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
-                    foreach (var child in childRenderers)
-                    {
-                        child.gameObject.AddComponent<MeshCollider>();
-                    }
-                    PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
-                    PrefabUtility.SavePrefabAsset(prefab);
-                    Object.DestroyImmediate(prefabInst);
-                }
-
-                return;
-            }
-
-            if (prefab.transform.Find("Collision") != null)
-                return;
-
-            var collisionMesh = physicsPrefab.GetComponentInChildren<MeshFilter>();
-            if (collisionMesh == null)
-                return;
-
-            prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-            prefabInst.GetComponentsInChildren<MeshCollider>().ToList().ForEach(collider => Object.DestroyImmediate(collider));
-
-            var collider = new GameObject() { isStatic = true };
-            collider.transform.SetParent(prefabInst.transform);
-            collider.name = "Collision";
-            var parentCollider = collider.AddComponent<MeshCollider>();
-            parentCollider.sharedMesh = collisionMesh.sharedMesh;
-            PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
-            PrefabUtility.SavePrefabAsset(prefab);
-
-            Object.DestroyImmediate(prefabInst);
         }
 
         private static void PostProcessImports()

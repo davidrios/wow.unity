@@ -173,6 +173,51 @@ namespace WowUnity
             return newPrefab;
         }
 
+        public static void SetupPhysics(string path, bool useMesh)
+        {
+            var prefab = FindPrefab(path);
+            GameObject prefabInst;
+
+            var physicsPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(path.Replace(".obj", ".phys.obj"));
+            if (physicsPrefab == null)
+            {
+                if (useMesh)
+                {
+                    prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+                    var childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
+                    foreach (var child in childRenderers)
+                    {
+                        child.gameObject.AddComponent<MeshCollider>();
+                    }
+                    PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
+                    PrefabUtility.SavePrefabAsset(prefab);
+                    UnityEngine.Object.DestroyImmediate(prefabInst);
+                }
+
+                return;
+            }
+
+            if (prefab.transform.Find("Collision") != null)
+                return;
+
+            var collisionMesh = physicsPrefab.GetComponentInChildren<MeshFilter>();
+            if (collisionMesh == null)
+                return;
+
+            prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+            prefabInst.GetComponentsInChildren<MeshCollider>().ToList().ForEach(collider => UnityEngine.Object.DestroyImmediate(collider));
+
+            var collider = new GameObject() { isStatic = true };
+            collider.transform.SetParent(prefabInst.transform);
+            collider.name = "Collision";
+            var parentCollider = collider.AddComponent<MeshCollider>();
+            parentCollider.sharedMesh = collisionMesh.sharedMesh;
+            PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
+            PrefabUtility.SavePrefabAsset(prefab);
+
+            UnityEngine.Object.DestroyImmediate(prefabInst);
+        }
+
         public static void ProcessTextures(List<Texture> textures, string dirName)
         {
             var mainDataPath = Application.dataPath.Replace("Assets", "");

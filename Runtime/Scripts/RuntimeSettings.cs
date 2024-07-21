@@ -66,9 +66,11 @@ namespace WowUnity
                 new GUIContent("Density factor", "Density factor when placing the foliage"));
             EditorGUILayout.PropertyField(
                 serializedObject.FindProperty("foliageSetupLODs"),
-                new GUIContent("Set up LOD levels", "Attach LOD Group components to placed foliage"));
+                new GUIContent("Set up LOD levels", "Attach LODGroup components to placed foliage if they don't already have one"));
             if (settings.foliageSetupLODs)
-                EditorGUILayout.PropertyField(serializedObject.FindProperty("foliageCullWidth"), new GUIContent("Cull Transition (% Screen Size)"));
+                EditorGUILayout.PropertyField(
+                    serializedObject.FindProperty("foliageCullWidth"),
+                    new GUIContent("Cull Transition", "Value in % of screen size. Will only be applied if the object had a dynamic LODGroup attached"));
             EditorGUILayout.PropertyField(
                 serializedObject.FindProperty("foliageCastsShadows"),
                 new GUIContent("Casts shadows"));
