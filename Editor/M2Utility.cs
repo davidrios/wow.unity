@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class M2Utility
+    public class M2Utility
     {
         public const string DOUBLE_SIDED_INVERSE_SUFFIX = "__dsinv.obj";
 

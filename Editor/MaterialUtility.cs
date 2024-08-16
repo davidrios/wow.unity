@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class MaterialUtility
+    public class MaterialUtility
     {
         public const string LIT_SHADER = "Universal Render Pipeline/Lit";
         public const string UNLIT_SHADER = "Universal Render Pipeline/Unlit";
@@ -37,6 +37,47 @@ namespace WowUnity
         {
             M2 = 0,
             WMO = 1,
+        }
+
+        public static Material GetBasicMaterial(string texturePath, uint blendingMode)
+        {
+            var assetMatPath = Path.Join(Path.GetDirectoryName(texturePath), $"{Path.GetFileNameWithoutExtension(texturePath)}_B{blendingMode:X}.mat");
+            var material = AssetDatabase.LoadAssetAtPath<Material>(assetMatPath);
+            if (material != null)
+                return material;
+
+            var assetTexture = AssetDatabase.LoadAssetAtPath<Texture>(texturePath);
+            if (assetTexture == null)
+                return null;
+
+            var isBirp = Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP;
+            if (isBirp)
+            {
+                material = new Material(Shader.Find(BirpMaterialUtility.LIT_SHADER));
+                material.SetFloat("_Glossiness", 0);
+                material.SetTexture("_MainTex", assetTexture);
+
+                if (blendingMode == (short)BlendModes.AlphaKey)
+                    material.SetFloat("_Mode", 1);
+            }
+            else
+            {
+                material = new Material(Shader.Find(LIT_SHADER));
+                material.SetFloat("_WorkflowMode", 0);
+                material.SetFloat("_Smoothness", 0);
+                material.SetTexture("_BaseMap", assetTexture);
+
+                if (blendingMode == (short)BlendModes.AlphaKey)
+                {
+                    material.EnableKeyword("_ALPHATEST_ON");
+                    material.SetFloat("_AlphaClip", 1);
+                }
+            }
+
+            AssetDatabase.CreateAsset(material, assetMatPath);
+            AssetDatabase.SaveAssets();
+
+            return material;
         }
 
         public static Material GetMaterial(M2Utility.Texture texture, MaterialFor materialFor, short flags, uint blendingMode, int shader, Color materialColor)
