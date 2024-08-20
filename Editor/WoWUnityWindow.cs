@@ -10,6 +10,7 @@ public class WoWUnityWindow : EditorWindow
     private Dictionary<string, GameObject> selectedMapTiles;
     private GameObject selectedForDoodads;
     private TextAsset modelPlacementInfo;
+    private FoliageSettings foliageSettings;
 
     [MenuItem("Window/wow.unity")]
     public static void ShowWindow()
@@ -62,27 +63,11 @@ public class WoWUnityWindow : EditorWindow
         var settings = Settings.GetSettings();
 
         GUILayout.Label("Settings", EditorStyles.boldLabel);
-        GUILayout.BeginHorizontal();
-        try
+        if (GUILayout.Button("Open Editor Settings"))
         {
-            if (GUILayout.Button("Open Editor Settings"))
-            {
-                Selection.activeObject = settings;
-                EditorGUIUtility.PingObject(settings);
-                EditorApplication.ExecuteMenuItem("Window/General/Inspector");
-            }
-
-            if (GUILayout.Button("Open Runtime Settings"))
-            {
-                var rsettings = RuntimeSettings.GetSettings();
-                Selection.activeObject = rsettings;
-                EditorGUIUtility.PingObject(rsettings);
-                EditorApplication.ExecuteMenuItem("Window/General/Inspector");
-            }
-        }
-        finally
-        {
-            GUILayout.EndHorizontal();
+            Selection.activeObject = settings;
+            EditorGUIUtility.PingObject(settings);
+            EditorApplication.ExecuteMenuItem("Window/General/Inspector");
         }
 
         GUILayout.Space(10);
@@ -124,10 +109,10 @@ public class WoWUnityWindow : EditorWindow
             }
 
             GUILayout.BeginHorizontal();
-
             try
             {
-                if (GUILayout.Button("Setup Foliage Spawner"))
+                foliageSettings = EditorGUILayout.ObjectField("Foliage settings", foliageSettings, typeof(FoliageSettings), false) as FoliageSettings;
+                if (foliageSettings != null && GUILayout.Button("Setup Foliage Spawner"))
                     SetupFoliage();
             }
             finally
@@ -248,7 +233,7 @@ public class WoWUnityWindow : EditorWindow
 
         foreach (var selectedAsset in selectedMapTiles.Values)
         {
-            if (selectedAsset.name.StartsWith("adt_"))
+            if (selectedAsset.name.StartsWith("adt_") && selectedAsset.transform.childCount > 0)
             {
                 var adtRoot = selectedAsset.transform;
 
@@ -259,12 +244,12 @@ public class WoWUnityWindow : EditorWindow
                 var chunksContainer = adtRoot.Find(adtRoot.name);
                 for (var i = 0; i < chunksContainer.childCount; i++)
                 {
-                    ADTUtility.PlaceFoliageSpawner(chunksContainer.GetChild(i).gameObject);
+                    ADTUtility.PlaceFoliageSpawner(foliageSettings, chunksContainer.GetChild(i).gameObject);
                 }
             }
             else
             {
-                ADTUtility.PlaceFoliageSpawner(selectedAsset);
+                ADTUtility.PlaceFoliageSpawner(foliageSettings, selectedAsset);
             }
 
         }

@@ -105,7 +105,7 @@ namespace WowUnity
             }
         }
 
-        public static void PlaceFoliageSpawner(GameObject chunk)
+        public static void PlaceFoliageSpawner(FoliageSettings foliageSettings, GameObject chunk)
         {
             var path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(chunk);
             if (path == null)
@@ -114,7 +114,8 @@ namespace WowUnity
                 return;
             }
 
-            var chunkName = chunk.name;
+            var match = Regex.Match(chunk.name, @".+?(\d+_\d+_\d+)$");
+            var chunkName = match.Groups[1].Value;
 
             var dirName = Path.GetDirectoryName(path);
             var mainDataPath = Application.dataPath.Replace("Assets", "");
@@ -192,7 +193,9 @@ namespace WowUnity
                 AssetDatabase.LoadAssetAtPath<Texture2D>(Path.Join(dirName, $"tex_{chunkName}.png")),
                 layersInfo,
                 chunkMesh.bounds,
-                (int)(Random.value * 0xffffff));
+                (int)(Random.value * 0xffffff),
+                foliageSettings
+            );
         }
 
         public class Tex
