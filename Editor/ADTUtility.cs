@@ -52,7 +52,9 @@ namespace WowUnity
 
                     foreach (var renderer in renderers)
                     {
-                        var pathToMetadata = $"{dirName}/tex_{renderer.name}.json";
+                        var match = Regex.Match(renderer.name, @".+?(\d+_\d+_\d+)$");
+                        var name = match.Groups[1].Value;
+                        var pathToMetadata = $"{dirName}/tex_{name}.json";
 
                         if (EditorUtility.DisplayCancelableProgressBar("Creating terrain materials.", pathToMetadata, itemsProcessed / total))
                             return;
@@ -72,7 +74,7 @@ namespace WowUnity
                             metadata.layers[idx] = texture;
                         }
 
-                        renderer.material = MaterialUtility.GetTerrainMaterial(dirName, renderer.name, metadata);
+                        renderer.material = MaterialUtility.GetTerrainMaterial(dirName, name, metadata);
                         itemsProcessed++;
                     }
                 }
