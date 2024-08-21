@@ -72,8 +72,8 @@ namespace WowUnity.Foliage
                         toRemove.Add(spawner);
                 }
 
-                if (toRemove.Count > 0)
-                    Debug.Log($"Foliage spawners activated: {toRemove.Count}");
+                //if (toRemove.Count > 0)
+                //    Debug.Log($"Foliage spawners activated: {toRemove.Count}");
 
                 foreach (var spawner in toRemove)
                 {
