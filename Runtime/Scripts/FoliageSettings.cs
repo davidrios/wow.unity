@@ -7,6 +7,7 @@ namespace WowUnity
     {
         public int rayLayer = 0;
         public int rayPreventLayerMask = 0;
+        public int spawnLayer = -1;
         public float spawnDistance = 70f;
         public float poolDistance = 71f;
         public float densityFactor = 0.6f;

@@ -15,6 +15,9 @@ namespace WowUnity
                 serializedObject.FindProperty("rayPreventLayerMask"),
                 new GUIContent("Prevent raycast layer mask"));
             EditorGUILayout.PropertyField(
+                serializedObject.FindProperty("spawnLayer"),
+                new GUIContent("Layer to spawn foliage in", "Set to -1 to leave it unset."));
+            EditorGUILayout.PropertyField(
                 serializedObject.FindProperty("spawnDistance"),
                 new GUIContent("Spawn distance (from player)"));
             EditorGUILayout.PropertyField(

@@ -86,6 +86,8 @@ namespace WowUnity.Foliage
             foliage = Instantiate(prefab, position, rotation);
             foliage.transform.parent = parent;
             foliage.transform.localScale = scale;
+            if (foliageSettings.spawnLayer >= 0)
+                foliage.layer = foliageSettings.spawnLayer;
 
             foliage.isStatic = false;
             var renderers = new List<Renderer>();
