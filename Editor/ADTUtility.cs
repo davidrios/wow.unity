@@ -145,9 +145,19 @@ namespace WowUnity
 
                 var foliageDir = Path.Join(dirName, "foliage");
 
-                var srl = new StreamReader(Path.Join(mainDataPath, foliageDir, $"{texture.effectID}.json"));
-                var jsonDataL = srl.ReadToEnd();
-                sr.Close();
+                string jsonDataL;
+                var foliageJson = Path.Join(mainDataPath, foliageDir, $"{texture.effectID}.json");
+
+                try
+                {
+                    var srl = new StreamReader(foliageJson);
+                    jsonDataL = srl.ReadToEnd();
+                    sr.Close();
+                } catch
+                {
+                    Debug.LogWarning($"Foliage data {foliageJson} not found for chunk {chunkName}");
+                    continue;
+                }
 
                 var effectData = JsonConvert.DeserializeObject<Effect>(jsonDataL);
 
