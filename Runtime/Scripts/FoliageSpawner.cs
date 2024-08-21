@@ -283,7 +283,8 @@ namespace WowUnity.Foliage
 
         private void OnDestroy()
         {
-            manager.RemoveSpawner(this);
+            if (manager != null)
+                manager.RemoveSpawner(this);
         }
 
         private (List<GameObject>, List<float>)[] GetPrefabsAndWeights()
