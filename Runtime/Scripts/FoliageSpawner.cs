@@ -223,6 +223,12 @@ namespace WowUnity.Foliage
 
         void Start()
         {
+            if (foliageSettings == null)
+            {
+                Debug.LogWarning($"Spawner {name} has no foliageSettings", this);
+                return;
+            }
+
             layerContainers = new();
             for (var i = 0; i < 4; i++)
             {
