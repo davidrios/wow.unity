@@ -52,7 +52,7 @@ namespace WowUnity
 
                     foreach (var renderer in renderers)
                     {
-                        var match = Regex.Match(renderer.name, @".+?(\d+_\d+_\d+)$");
+                        var match = Regex.Match(renderer.name, @".*?(\d+_\d+_\d+)$");
                         var name = match.Groups[1].Value;
                         var pathToMetadata = $"{dirName}/tex_{name}.json";
 
@@ -114,7 +114,7 @@ namespace WowUnity
                 return;
             }
 
-            var match = Regex.Match(chunk.name, @".+?(\d+_\d+_\d+)$");
+            var match = Regex.Match(chunk.name, @".*?(\d+_\d+_\d+)$");
             var chunkName = match.Groups[1].Value;
 
             var dirName = Path.GetDirectoryName(path);
