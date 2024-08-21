@@ -18,11 +18,11 @@ namespace WowUnity
                 serializedObject.FindProperty("spawnLayer"),
                 new GUIContent("Layer to spawn foliage in", "Set to -1 to leave it unset."));
             EditorGUILayout.PropertyField(
+                serializedObject.FindProperty("playerTag"),
+                new GUIContent("Player object tag", "The tag that the players object have. Will be used for distance calculation."));
+            EditorGUILayout.PropertyField(
                 serializedObject.FindProperty("spawnDistance"),
                 new GUIContent("Spawn distance (from player)"));
-            EditorGUILayout.PropertyField(
-                serializedObject.FindProperty("poolDistance"),
-                new GUIContent("Pool reclaim distance"));
             EditorGUILayout.PropertyField(
                 serializedObject.FindProperty("densityFactor"),
                 new GUIContent("Density factor", "Density factor when placing the foliage"));
