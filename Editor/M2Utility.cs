@@ -25,8 +25,10 @@ namespace WowUnity
 
             ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
-            var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            var renderers = imported.GetComponentsInChildren<Renderer>();
+            var importedInstance = InstantiateImported(path);
+
+            var renderers = importedInstance.GetComponentsInChildren<Renderer>();
+
             var skinMaterials = MaterialUtility.GetSkinMaterials(metadata);
 
             var isDoubleSided = false;
@@ -45,7 +47,7 @@ namespace WowUnity
             }
             AssetDatabase.Refresh();
 
-            GeneratePrefab(path);
+            SaveAsPrefab(importedInstance, path);
 
             if (isDoubleSided && Settings.GetSettings().renderingPipeline == RenderingPipeline.BiRP)
                 AssetConversionManager.QueueCreateDoublesided((path, nonDoubleSided));
@@ -114,40 +116,23 @@ namespace WowUnity
                 .ToDictionary((item) => item.name, (item) => item.sharedMaterial);
 
             var invPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(invPath);
-            var renderers = invPrefab.GetComponentsInChildren<Renderer>();
-            for (var idx = 0; idx < renderers.Length; idx++)
-            {
-                renderers[idx].sharedMaterial = texturesByRenderer[renderers[idx].name];
-            }
             var invPrefabInst = PrefabUtility.InstantiatePrefab(invPrefab, gameObject.transform) as GameObject;
             invPrefabInst.isStatic = gameObject.isStatic;
             foreach (Transform childTransform in invPrefabInst.transform)
             {
                 childTransform.gameObject.isStatic = gameObject.isStatic;
             }
+            var renderers = invPrefabInst.GetComponentsInChildren<Renderer>();
+            for (var idx = 0; idx < renderers.Length; idx++)
+            {
+                renderers[idx].sharedMaterial = texturesByRenderer[renderers[idx].name];
+            }
 
             return invPrefabInst;
         }
 
-        public static GameObject FindOrCreatePrefab(string path)
+        public static GameObject InstantiateImported(string path)
         {
-            var existingPrefab = FindPrefab(path);
-
-            if (existingPrefab == null)
-                return GeneratePrefab(path);
-
-            return existingPrefab;
-        }
-
-        public static GameObject FindPrefab(string path)
-        {
-            var prefabPath = Path.ChangeExtension(path, "prefab");
-            return AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-        }
-
-        public static GameObject GeneratePrefab(string path)
-        {
-            var prefabPath = Path.ChangeExtension(path, "prefab");
             var importedModelObject = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
             if (importedModelObject == null)
@@ -166,11 +151,19 @@ namespace WowUnity
                 childTransform.gameObject.isStatic = true;
             }
 
-            var newPrefab = PrefabUtility.SaveAsPrefabAssetAndConnect(rootObj, prefabPath, InteractionMode.AutomatedAction);
-            AssetDatabase.Refresh();
-            UnityEngine.Object.DestroyImmediate(rootObj);
+            return rootObj;
+        }
 
-            return newPrefab;
+        public static void SaveAsPrefab(GameObject gameObject, string path)
+        {
+            PrefabUtility.SaveAsPrefabAsset(gameObject, Path.ChangeExtension(path, ".prefab"));
+            UnityEngine.Object.DestroyImmediate(gameObject);
+        }
+
+        public static GameObject FindPrefab(string path)
+        {
+            string prefabPath = Path.ChangeExtension(path, "prefab");
+            return AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         }
 
         public static void SetupPhysics(string path, bool useMesh)
