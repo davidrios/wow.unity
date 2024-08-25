@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class WMOUtility
+    public class WMOUtility
     {
         public static bool IsWMO(string jsonData)
         {
@@ -27,9 +27,9 @@ namespace WowUnity
 
             M2Utility.ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
-            var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var importedInstance = M2Utility.InstantiateImported(path);
 
-            var renderers = imported.GetComponentsInChildren<Renderer>();
+            var renderers = importedInstance.GetComponentsInChildren<Renderer>();
 
             var materials = MaterialUtility.GetWMOMaterials(metadata);
 
@@ -40,18 +40,7 @@ namespace WowUnity
             }
             AssetDatabase.Refresh();
 
-            var prefab = M2Utility.FindOrCreatePrefab(path);
-            var prefabInst = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-
-            var childRenderers = prefabInst.GetComponentsInChildren<MeshRenderer>();
-            foreach (var child in childRenderers)
-            {
-                child.gameObject.AddComponent<MeshCollider>();
-            }
-            PrefabUtility.ApplyPrefabInstance(prefabInst, InteractionMode.AutomatedAction);
-            PrefabUtility.SavePrefabAsset(prefab);
-
-            Object.DestroyImmediate(prefabInst);
+            M2Utility.SaveAsPrefab(importedInstance, path);
         }
 
         public static bool AssignVertexColors(WMOUtility.Group group, List<GameObject> gameObjects)

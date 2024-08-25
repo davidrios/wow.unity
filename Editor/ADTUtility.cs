@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class ADTUtility
+    public class ADTUtility
     {
         public static bool IsAdtObj(string path)
         {
@@ -25,6 +25,7 @@ namespace WowUnity
             var total = 0f;
             var itemsProcessed = 0f;
 
+            List<(string, GameObject)> instances = new();
             AssetDatabase.StartAssetEditing();
             try
             {
@@ -44,11 +45,11 @@ namespace WowUnity
                     if (M2Utility.FindPrefab(path) != null)
                         continue;
 
-                    var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    var importedInstance = M2Utility.InstantiateImported(path);
 
                     var dirName = Path.GetDirectoryName(path);
 
-                    var renderers = imported.GetComponentsInChildren<Renderer>();
+                    var renderers = importedInstance.GetComponentsInChildren<Renderer>();
 
                     foreach (var renderer in renderers)
                     {
@@ -75,6 +76,8 @@ namespace WowUnity
                         renderer.material = MaterialUtility.GetTerrainMaterial(dirName, renderer.name, metadata);
                         itemsProcessed++;
                     }
+
+                    instances.Add((path, importedInstance));
                 }
             }
             catch (System.Exception)
@@ -91,9 +94,9 @@ namespace WowUnity
 
             try
             {
-                foreach (var path in paths)
+                foreach (var (path, instance) in instances)
                 {
-                    M2Utility.FindOrCreatePrefab(path);
+                    M2Utility.SaveAsPrefab(instance, path);
                     itemsProcessed++;
                 }
             }
