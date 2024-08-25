@@ -119,16 +119,16 @@ namespace WowUnity
                 .ToDictionary((item) => item.Item1, (item) => item.Item2);
 
             var invPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(invPath);
-            var renderers = invPrefab.GetComponentsInChildren<Renderer>();
-            for (var idx = 0; idx < renderers.Length; idx++)
-            {
-                renderers[idx].sharedMaterial = texturesByRenderer[renderers[idx].name];
-            }
             var invPrefabInst = PrefabUtility.InstantiatePrefab(invPrefab, gameObject.transform) as GameObject;
             invPrefabInst.isStatic = gameObject.isStatic;
             foreach (Transform childTransform in invPrefabInst.transform)
             {
                 childTransform.gameObject.isStatic = gameObject.isStatic;
+            }
+            var renderers = invPrefabInst.GetComponentsInChildren<Renderer>();
+            for (var idx = 0; idx < renderers.Length; idx++)
+            {
+                renderers[idx].sharedMaterial = texturesByRenderer[renderers[idx].name];
             }
 
             return invPrefabInst;
