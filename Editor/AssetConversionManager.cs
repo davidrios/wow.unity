@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class AssetConversionManager
+    public class AssetConversionManager
     {
         private static readonly ConcurrentQueue<string> importedModelPathQueue = new();
         private static readonly ConcurrentQueue<string> importedWMOPathQueue = new();
