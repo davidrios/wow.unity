@@ -38,6 +38,13 @@ namespace WowUnity
                 var renderer = renderers[rendererIndex];
                 renderer.material = materials[renderer.name];
             }
+
+            var childRenderers = importedInstance.GetComponentsInChildren<MeshRenderer>();
+            foreach (var child in childRenderers)
+            {
+                child.gameObject.AddComponent<MeshCollider>();
+            }
+
             AssetDatabase.Refresh();
 
             M2Utility.SaveAsPrefab(importedInstance, path);
