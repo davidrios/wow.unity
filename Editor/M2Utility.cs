@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class M2Utility
+    public class M2Utility
     {
         public static void PostProcessImport(string path, string jsonData)
         {
@@ -25,9 +25,9 @@ namespace WowUnity
 
             ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
-            var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var importedInstance = InstantiateImported(path);
 
-            Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
+            Renderer[] renderers = importedInstance.GetComponentsInChildren<Renderer>();
 
             var skinMaterials = MaterialUtility.GetSkinMaterials(metadata);
 
@@ -40,7 +40,7 @@ namespace WowUnity
             }
             AssetDatabase.Refresh();
 
-            GeneratePrefab(path);
+            SaveAsPrefab(importedInstance, path);
 
             if (metadata.textureTransforms.Count > 0 && metadata.textureTransforms[0].translation.timestamps.Count > 0)
             {
@@ -52,28 +52,9 @@ namespace WowUnity
             }
         }
 
-        public static GameObject FindOrCreatePrefab(string path)
+        public static GameObject InstantiateImported(string path)
         {
-            GameObject existingPrefab = FindPrefab(path);
-
-            if (existingPrefab == null)
-            {
-                return GeneratePrefab(path);
-            }
-
-            return existingPrefab;
-        }
-
-        public static GameObject FindPrefab(string path)
-        {
-            string prefabPath = Path.ChangeExtension(path, "prefab");
-            return AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-        }
-
-        public static GameObject GeneratePrefab(string path)
-        {
-            string prefabPath = Path.ChangeExtension(path, "prefab");
-            GameObject importedModelObject = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var importedModelObject = AssetDatabase.LoadAssetAtPath<GameObject>(path);
 
             if (importedModelObject == null)
             {
@@ -82,7 +63,7 @@ namespace WowUnity
             }
 
             var rootObj = new GameObject() { isStatic = true };
-            GameObject rootModelInstance = PrefabUtility.InstantiatePrefab(importedModelObject, rootObj.transform) as GameObject;
+            var rootModelInstance = PrefabUtility.InstantiatePrefab(importedModelObject, rootObj.transform) as GameObject;
 
             //Set the object as static, and all it's child objects
             rootModelInstance.isStatic = true;
@@ -91,11 +72,19 @@ namespace WowUnity
                 childTransform.gameObject.isStatic = true;
             }
 
-            GameObject newPrefab = PrefabUtility.SaveAsPrefabAssetAndConnect(rootObj, prefabPath, InteractionMode.AutomatedAction);
-            AssetDatabase.Refresh();
-            UnityEngine.Object.DestroyImmediate(rootObj);
+            return rootObj;
+        }
 
-            return newPrefab;
+        public static void SaveAsPrefab(GameObject gameObject, string path)
+        {
+            PrefabUtility.SaveAsPrefabAsset(gameObject, Path.ChangeExtension(path, ".prefab"));
+            UnityEngine.Object.DestroyImmediate(gameObject);
+        }
+
+        public static GameObject FindPrefab(string path)
+        {
+            string prefabPath = Path.ChangeExtension(path, "prefab");
+            return AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         }
 
         public static void ProcessTextures(List<Texture> textures, string dirName) {
