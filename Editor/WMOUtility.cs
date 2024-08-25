@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class WMOUtility
+    public class WMOUtility
     {
         public static bool IsWMO(string jsonData)
         {

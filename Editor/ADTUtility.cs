@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class ADTUtility
+    public class ADTUtility
     {
         public static bool IsAdtObj(string path)
         {

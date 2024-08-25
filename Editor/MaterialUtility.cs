@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class MaterialUtility
+    public class MaterialUtility
     {
         public const string LIT_SHADER = "Universal Render Pipeline/Lit";
         public const string UNLIT_SHADER = "Universal Render Pipeline/Unlit";

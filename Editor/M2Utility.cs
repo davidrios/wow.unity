@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace WowUnity
 {
-    class M2Utility
+    public class M2Utility
     {
         public static void PostProcessImport(string path, string jsonData)
         {
