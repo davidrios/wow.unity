@@ -30,9 +30,9 @@ namespace WowUnity
 
             M2Utility.ProcessTextures(metadata.textures, Path.GetDirectoryName(path));
 
-            var imported = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var importedInstance = M2Utility.InstantiateImported(path);
 
-            Renderer[] renderers = imported.GetComponentsInChildren<Renderer>();
+            Renderer[] renderers = importedInstance.GetComponentsInChildren<Renderer>();
 
             var materials = MaterialUtility.GetWMOMaterials(metadata);
 
@@ -43,7 +43,7 @@ namespace WowUnity
             }
             AssetDatabase.Refresh();
 
-            M2Utility.FindOrCreatePrefab(path);
+            M2Utility.SaveAsPrefab(importedInstance, path);
         }
 
         public static bool AssignVertexColors(WMOUtility.Group group, List<GameObject> gameObjects)
