@@ -148,7 +148,7 @@ namespace WowUnity
 
         private static GameObject SpawnDoodad(string path, Vector3 position, Quaternion rotation, float scaleFactor, Transform parent)
         {
-            GameObject exisitingPrefab = M2Utility.FindOrCreatePrefab(path);
+            GameObject exisitingPrefab = M2Utility.FindPrefab(path);
 
             if (exisitingPrefab == null)
             {
